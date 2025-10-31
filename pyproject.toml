@@ -1,0 +1,48 @@
+[build-system]
+requires = ["hatchling>=1.27.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "aware-sdk"
+version = "0.0.0"
+description = "Convenience bundle for installing Aware release tooling"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { file = "LICENSE" }
+authors = [
+  { name = "Aware OSS Team" }
+]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.12",
+  "Operating System :: OS Independent",
+  "Topic :: Software Development :: Build Tools",
+]
+keywords = ["aware", "sdk", "automation", "release"]
+dependencies = [
+  "aware-release>=0.1.2",
+  "aware-test-runner>=0.1.2",
+  "aware-file-system>=0.1.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/aware-network/aware-sdk"
+Documentation = "https://github.com/aware-network/aware-sdk/blob/main/README.md"
+Changelog = "https://github.com/aware-network/aware-sdk/blob/main/CHANGELOG.md"
+Source = "https://github.com/aware-network/aware-sdk"
+Issues = "https://github.com/aware-network/aware-sdk/issues"
+
+[project.scripts]
+aware-sdk = "aware_sdk.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["aware_sdk"]
+include = [
+  "README.md",
+  "CHANGELOG.md",
+  "LICENSE",
+]
