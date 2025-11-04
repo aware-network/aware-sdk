@@ -1,6 +1,9 @@
 # Aware FS Storage
 fs_storage/
 
+# Build artefacts
+build/
+
 # AWARE system directories - exclude from source code introspection
 .aware/
 .aware/**
@@ -42,53 +45,3 @@ env/
 *.env/
 .env
 
-*.branches
-*.temp
-
-# Ignore test files
-*.tests
-
-# Poetry lock files
-**/poetry.lock
-
-# UV lock file
-uv.lock
-
-# Performance-critical exclusions for code introspection
-# Cache directories
-.mypy_cache/
-**/.mypy_cache/
-
-# Flutter ephemeral directories
-flutter/ephemeral/
-**/flutter/ephemeral/
-linux/flutter/ephemeral/
-**/linux/flutter/ephemeral/
-android/app/debug/
-**/android/app/debug/
-android/app/profile/
-**/android/app/profile/
-android/app/release/
-**/android/app/release/
-ios/Flutter/
-**/ios/Flutter/
-macos/Flutter/
-**/macos/Flutter/
-windows/flutter/ephemeral/
-**/windows/flutter/ephemeral/
-
-# Other excludes
-coverage/
-**/coverage/
-logs/
-**/logs/
-*.log
-tmp/
-**/tmp/
-temp/
-**/temp/
-
-.vscode/
-
-# Dart build artifacts
-.dart_tool/

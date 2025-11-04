@@ -1,0 +1,6 @@
+{
+  "name": "internal",
+  "description": "Placeholder for the full internal suite manifest (populated during migration).",
+  "extends": "oss",
+  "suites": []
+}

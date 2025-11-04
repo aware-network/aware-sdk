@@ -1,0 +1,8 @@
+{
+  "suites": [
+    "release",
+    "release-pipeline",
+    "test-runner",
+    "file_system"
+  ]
+}

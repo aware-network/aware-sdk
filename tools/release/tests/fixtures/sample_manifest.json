@@ -1,0 +1,24 @@
+{
+  "channel": "dev",
+  "version": "0.1.0",
+  "built_at": "2025-10-24T17:00:00Z",
+  "platform": "linux-x86_64",
+  "checksum": {
+    "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+  },
+  "providers": {
+    "codex": {
+      "version": "1.0.0",
+      "source": "aware-terminal-providers-1.0.0.whl",
+      "metadata": {
+        "maintainer": "AWARE Team"
+      }
+    }
+  },
+  "dependencies": [
+    "aware-cli==0.8.0",
+    "aware-terminal==0.2.0"
+  ],
+  "notes": "Sample manifest for validation tests.",
+  "python": "3.12.1"
+}

@@ -1,0 +1,63 @@
+[build-system]
+requires = ["hatchling>=1.20"]
+build-backend = "hatchling.build"
+
+[project]
+name = "aware-test-runner"
+version = "0.1.3"
+description = "Unified test runner for the Aware platform with OSS-ready packaging."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+authors = [
+  { name = "Aware OSS Team" }
+]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Operating System :: OS Independent",
+  "Topic :: Software Development :: Testing",
+]
+keywords = ["aware", "testing", "automation", "manifests", "ci"]
+dependencies = ["pytest>=8.2"]
+
+[project.optional-dependencies]
+internal = []
+docs = ["mkdocs>=1.6"]
+tests = ["pytest>=8.2"]
+
+[project.scripts]
+aware-tests = "aware_test_runner.cli:main"
+aware-test = "aware_test_runner.cli:main"
+
+[project.urls]
+Homepage = "https://pypi.org/project/aware-test-runner/"
+Documentation = "https://github.com/aware-network/aware-sdk/tree/main/tools/test-runner/README.md"
+Changelog = "https://github.com/aware-network/aware-sdk/tree/main/tools/test-runner/CHANGELOG.md"
+Source = "https://github.com/aware-network/aware-sdk"
+Issues = "https://github.com/aware-network/aware-sdk/issues"
+
+[tool.uv]
+package = true
+
+[tool.hatch.build]
+sources = ["."]
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["aware_test_runner", "aware_tests"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"aware_test_runner/data/manifests/oss/stable.json" = "aware_test_runner/data/manifests/oss/stable.json"
+"aware_test_runner/data/manifests/oss/runtime.json" = "aware_test_runner/data/manifests/oss/runtime.json"
+
+[tool.hatch.version]
+path = "aware_test_runner/__init__.py"
