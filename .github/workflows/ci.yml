@@ -25,6 +25,7 @@ jobs:
       - name: Run OSS suites
         env:
           UV_NO_WORKSPACE: "1"
+          AWARE_ROOT: ${{ github.workspace }}
         run: |
           uv run --project tools/test-runner \
             --with .[test] \

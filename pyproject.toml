@@ -26,12 +26,12 @@ keywords = ["aware", "sdk", "automation", "release"]
 dependencies = [
   "aware-release>=0.1.2",
   "aware-test-runner>=0.1.4",
-  "aware-file-system>=0.1.0",
+  "aware-file-system>=0.1.1",
 ]
 
 [project.optional-dependencies]
 test = [
-  "aware-file-system[test]>=0.1.0",
+  "aware-file-system[test]>=0.1.1",
   "pytest>=8.4.2",
   "pytest-asyncio>=0.23.7",
   "pytest-mock>=3.12",

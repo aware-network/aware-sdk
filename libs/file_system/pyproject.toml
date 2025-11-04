@@ -1,6 +1,6 @@
 [project]
 name = "aware-file-system"
-version = "0.1.0"
+version = "0.1.1"
 description = "Filesystem watcher and indexing utilities for aware-cli aware_sdk workflows."
 readme = "README.md"
 requires-python = ">=3.12"
