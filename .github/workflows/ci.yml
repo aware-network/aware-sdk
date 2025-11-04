@@ -22,6 +22,15 @@ jobs:
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "${HOME}/.local/bin" >> $GITHUB_PATH
 
+      - name: Install project dependencies
+        env:
+          UV_NO_WORKSPACE: "1"
+        run: |
+          uv sync --project tools/release
+          uv sync --project tools/release-pipeline
+          uv sync --project tools/test-runner
+          uv sync --project libs/file_system
+
       - name: Run OSS suites
         env:
           UV_NO_WORKSPACE: "1"
