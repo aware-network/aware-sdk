@@ -24,9 +24,11 @@ jobs:
 
       - name: Install project dependencies
         run: |
-          uv run --project tools/test-runner pip install --no-build-isolation --editable tools/release
-          uv run --project tools/test-runner pip install --no-build-isolation --editable tools/release-pipeline
-          uv run --project tools/test-runner pip install --no-build-isolation --editable libs/file_system
+          uv pip install --system hatchling
+          uv pip install --system --editable tools/release
+          uv pip install --system --editable tools/release-pipeline
+          uv pip install --system --editable libs/file_system
+          uv pip install --system --editable tools/test-runner
 
       - name: Run OSS suites
         env:
