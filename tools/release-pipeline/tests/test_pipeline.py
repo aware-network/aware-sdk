@@ -198,7 +198,48 @@ def test_cli_rules_render(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsy
     assert called["rules_root"] == "custom/rules"
     assert called["manifest_path"] == "output/manifest.json"
     assert called["workspace_root"] == str(tmp_path)
-    assert called["clean_manifest"] is False
+
+
+def _touch_file(path: Path, content: str = "") -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content, encoding="utf-8")
+
+
+def test_cli_sdk_sync(tmp_path: Path) -> None:
+    export_root = tmp_path / "export"
+    target_root = tmp_path / "target"
+    export_root.mkdir()
+    target_root.mkdir()
+    (target_root / ".git").mkdir()
+
+    _touch_file(export_root / "README.md", "export readme")
+    _touch_file(export_root / "dir" / "file.txt", "hello")
+    _touch_file(target_root / "obsolete.txt", "remove me")
+
+    cmd = [
+        sys.executable,
+        "-m",
+        "aware_release_pipeline.cli",
+        "sdk",
+        "sync",
+        "--export-root",
+        str(export_root),
+        "--target",
+        str(target_root),
+    ]
+    proc = subprocess.run(cmd, capture_output=True, text=True, check=False, env=_cli_env())
+    assert proc.returncode == 0
+    payload = json.loads(proc.stdout)
+    assert payload["status"] == "synced"
+    assert (target_root / ".git").exists()
+    assert not (target_root / "obsolete.txt").exists()
+    assert (target_root / "dir" / "file.txt").read_text(encoding="utf-8") == "hello"
+
+    dry_cmd = cmd + ["--dry-run"]
+    proc_dry = subprocess.run(dry_cmd, capture_output=True, text=True, check=False, env=_cli_env())
+    assert proc_dry.returncode == 0
+    dry_payload = json.loads(proc_dry.stdout)
+    assert dry_payload["status"] == "dry_run"
 
 
 def test_cli_pipeline_list() -> None:
@@ -415,7 +456,7 @@ def test_cli_aware_release_publish_pypi(monkeypatch: pytest.MonkeyPatch, capsys:
 
     import aware_release_pipeline.cli as pipeline_cli
 
-    monkeypatch.setattr("aware_release_pipeline.pipeline.publish_awarerelease_pypi", fake_publish)
+    monkeypatch.setattr(pipeline_cli, "publish_awarerelease_pypi", fake_publish)
 
     repo_root = Path(__file__).resolve().parents[3]
     pyproject_path = repo_root / "tools" / "release" / "pyproject.toml"

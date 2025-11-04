@@ -16,7 +16,13 @@ def find_aware_root() -> str:
         if parent.name == "aware" and parent.is_dir():
             return str(parent)
 
-    for env_var in ("AWARE_ROOT", "WORKSPACE"):
+    markers = ("aware_sdk", "tools", "libs")
+    for parent in current_path.parents:
+        if parent.is_dir() and (parent / "pyproject.toml").exists():
+            if any((parent / marker).exists() for marker in markers):
+                return str(parent)
+
+    for env_var in ("AWARE_ROOT", "AWARE_SDK_ROOT", "WORKSPACE"):
         value = os.environ.get(env_var)
         if value and os.path.exists(value):
             return value

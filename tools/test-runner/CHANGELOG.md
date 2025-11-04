@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.1.4] - 2025-11-04
+- Relaxed workspace detection so aware-tests run against staged aware-sdk exports (falls back to pyproject markers or `AWARE_SDK_ROOT` when the monorepo isn't available).
+- Added SDK sync tooling references to the release pipeline to keep public mirrors aligned.
+
 ## [0.1.3] - 2025-10-31T07:10:09Z
 - Expanded OSS stable manifest to cover release-pipeline, test-runner, and file_system suites.
 - Added changelog timestamp handling guard for manifests inserted without [Unreleased].

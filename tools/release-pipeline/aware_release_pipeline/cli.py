@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import shutil
 import sys
 from pathlib import Path
 from typing import Dict, List
@@ -139,6 +140,13 @@ def main(argv: list[str] | None = None) -> int:
     workflow_trigger.add_argument("--dry-run", action=argparse.BooleanOptionalAction, default=False)
     workflow_trigger.add_argument("--github-api", default="https://api.github.com")
 
+    sdk_parser = subparsers.add_parser("sdk", help="aware-sdk helper commands")
+    sdk_subparsers = sdk_parser.add_subparsers(dest="sdk_command", required=True)
+    sdk_sync = sdk_subparsers.add_parser("sync", help="Sync staged SDK export into a target repository")
+    sdk_sync.add_argument("--export-root", default="build/sdk-export")
+    sdk_sync.add_argument("--target", required=True)
+    sdk_sync.add_argument("--dry-run", action=argparse.BooleanOptionalAction, default=False)
+
     pipeline_cmd = subparsers.add_parser("pipeline", help="Composite pipeline registry commands")
     pipeline_subparsers = pipeline_cmd.add_subparsers(dest="pipeline_command", required=True)
 
@@ -162,6 +170,16 @@ def main(argv: list[str] | None = None) -> int:
                 build_dir=args.build_dir,
                 pyproject_path=args.pyproject,
                 repository=args.repository,
+                dry_run=args.dry_run,
+            )
+            print(json.dumps(payload, indent=2))
+            return 0
+
+    if args.command == "sdk":
+        if args.sdk_command == "sync":
+            payload = _sync_sdk_export(
+                export_root=args.export_root,
+                target_root=args.target,
                 dry_run=args.dry_run,
             )
             print(json.dumps(payload, indent=2))
@@ -328,6 +346,65 @@ def _run_publish(args: argparse.Namespace) -> int:
     )
     print(json.dumps(payload.to_dict(), indent=2))
     return 0
+
+
+def _sync_sdk_export(*, export_root: str, target_root: str, dry_run: bool) -> Dict[str, object]:
+    export_path = Path(export_root).resolve()
+    target_path = Path(target_root).resolve()
+
+    if not export_path.is_dir():
+        raise FileNotFoundError(f"Export root not found: {export_path}")
+    if not target_path.exists():
+        raise FileNotFoundError(f"Target path not found: {target_path}")
+    if not target_path.is_dir():
+        raise NotADirectoryError(f"Target path is not a directory: {target_path}")
+
+    git_dir = target_path / ".git"
+    if not git_dir.exists() or not git_dir.is_dir():
+        raise RuntimeError(f"Target path does not appear to be a git repository (missing {git_dir})")
+
+    if dry_run:
+        export_entries = sorted(str(path.relative_to(export_path)) for path in export_path.rglob("*"))
+        target_entries = sorted(
+            str(path.relative_to(target_path))
+            for path in target_path.rglob("*")
+            if ".git" not in path.parts
+        )
+        planned_removals = [
+            entry for entry in target_entries if not (export_path / entry).exists()
+        ]
+        planned_additions = [
+            entry for entry in export_entries if not (target_path / entry).exists()
+        ]
+        return {
+            "status": "dry_run",
+            "export_root": str(export_path),
+            "target_root": str(target_path),
+            "planned_removals": planned_removals,
+            "planned_additions": planned_additions,
+        }
+
+    for entry in list(target_path.iterdir()):
+        if entry.name == ".git":
+            continue
+        if entry.is_dir():
+            shutil.rmtree(entry)
+        else:
+            entry.unlink()
+
+    for item in export_path.iterdir():
+        destination = target_path / item.name
+        if item.is_dir():
+            shutil.copytree(item, destination)
+        else:
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(item, destination)
+
+    return {
+        "status": "synced",
+        "export_root": str(export_path),
+        "target_root": str(target_path),
+    }
 
 
 def _parse_pipeline_inputs(values: list[str]) -> Dict[str, List[str]]:

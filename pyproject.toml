@@ -25,7 +25,7 @@ classifiers = [
 keywords = ["aware", "sdk", "automation", "release"]
 dependencies = [
   "aware-release>=0.1.2",
-  "aware-test-runner>=0.1.2",
+  "aware-test-runner>=0.1.4",
   "aware-file-system>=0.1.0",
 ]
 
