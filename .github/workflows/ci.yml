@@ -27,7 +27,5 @@ jobs:
           UV_NO_WORKSPACE: "1"
         run: |
           uv run --project tools/test-runner \
-            --with tools/release \
-            --with tools/release-pipeline \
-            --with libs/file_system \
+            --with .[test] \
             aware-tests --manifest oss --stable --no-warnings

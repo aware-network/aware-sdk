@@ -15,4 +15,4 @@ def test_version_not_placeholder() -> None:
 
 def test_runner_resolves_root() -> None:
     runner = AwareTestRunner()
-    assert Path(runner.aware_root).name in {"aware", "aware-sdk"}
+    assert Path(runner.aware_root).name in {"aware", "aware-sdk", "sdk-export"}

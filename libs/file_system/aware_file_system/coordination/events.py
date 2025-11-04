@@ -5,20 +5,15 @@ This module defines the event system for coordinating cache invalidation
 across multiple index components.
 """
 
-from enum import Enum
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Set, Optional, Dict, Any
 import logging
 
+from aware_file_system.models import ChangeType
+
 logger = logging.getLogger(__name__)
-
-
-class ChangeType(str, Enum):
-    CREATE = "create"
-    DELETE = "delete"
-    UPDATE = "update"
 
 
 @dataclass

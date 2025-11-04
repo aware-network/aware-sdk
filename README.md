@@ -13,6 +13,13 @@ pip install aware-sdk
 
 Python 3.12 or newer is required.
 
+For CI parity and local testing install the optional `test` extra, which pulls
+in pytest and async fixtures used by the bundled suites:
+
+```bash
+pip install "aware-sdk[test]"
+```
+
 This command installs the following packages (with compatible versions):
 
 - [`aware-release`](https://pypi.org/project/aware-release/) — bundle builder,

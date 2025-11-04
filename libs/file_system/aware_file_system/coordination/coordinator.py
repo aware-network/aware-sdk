@@ -9,7 +9,7 @@ from typing import List, Protocol, Set, Optional, Dict, Any
 from datetime import datetime
 import logging
 
-from .events import FileSystemChangeEvent
+from aware_file_system.coordination.events import FileSystemChangeEvent
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +68,7 @@ class CacheCoordinator:
         # Performance metrics
         self.total_events_processed = 0
         self.total_invalidations_coordinated = 0
-        self.last_coordination_time = None
+        self.last_coordination_time: Optional[datetime] = None
 
         logger.debug("CacheCoordinator initialized")
 

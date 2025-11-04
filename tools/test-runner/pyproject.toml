@@ -1,17 +1,13 @@
-[build-system]
-requires = ["hatchling>=1.20"]
-build-backend = "hatchling.build"
-
 [project]
 name = "aware-test-runner"
 version = "0.1.4"
 description = "Unified test runner for the Aware platform with OSS-ready packaging."
-readme = "README.md"
 requires-python = ">=3.10"
 license = { file = "LICENSE" }
 authors = [
-  { name = "Aware OSS Team" }
+  { name = "Aware Team" }
 ]
+readme = "README.md"
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Intended Audience :: Developers",
@@ -32,10 +28,6 @@ internal = []
 docs = ["mkdocs>=1.6"]
 tests = ["pytest>=8.2"]
 
-[project.scripts]
-aware-tests = "aware_test_runner.cli:main"
-aware-test = "aware_test_runner.cli:main"
-
 [project.urls]
 Homepage = "https://pypi.org/project/aware-test-runner/"
 Documentation = "https://github.com/aware-network/aware-sdk/tree/main/tools/test-runner/README.md"
@@ -43,8 +35,16 @@ Changelog = "https://github.com/aware-network/aware-sdk/tree/main/tools/test-run
 Source = "https://github.com/aware-network/aware-sdk"
 Issues = "https://github.com/aware-network/aware-sdk/issues"
 
+[project.scripts]
+aware-tests = "aware_test_runner.cli:main"
+aware-test = "aware_test_runner.cli:main"
+
 [tool.uv]
 package = true
+
+[build-system]
+requires = ["hatchling>=1.27.0"]
+build-backend = "hatchling.build"
 
 [tool.hatch.build]
 sources = ["."]

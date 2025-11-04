@@ -63,7 +63,7 @@ class Manager(BaseModel):
         summary = self._diff_calculator.summarize_changes(changes, current_files)
         diffs = []
 
-        for change_type in [ChangeType.MODIFIED, ChangeType.ADDED]:
+        for change_type in [ChangeType.UPDATE, ChangeType.CREATE]:
             for file_path in changes.changes[change_type]:
                 previous_file = (
                     previous_update.project_structure.files_metadata.get(file_path) if previous_update else None

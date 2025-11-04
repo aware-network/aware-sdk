@@ -17,6 +17,18 @@ class FilterConfig(BaseModel):
     regex: List[RegexConfig] = Field(default_factory=list, description="Regex patterns with include/exclude flags")
     max_file_size: Optional[int] = Field(None, description="Maximum file size in bytes")
     max_depth: Optional[int] = None
+    ignored_extensions: Optional[List[str]] = Field(
+        default=None,
+        description="Additional file extensions to ignore (with or without leading dot).",
+    )
+    ignored_dirs: Optional[List[str]] = Field(
+        default=None,
+        description="Additional directory names to ignore during scans.",
+    )
+    inherit_ignore_defaults: bool = Field(
+        True,
+        description="If true, merge custom ignore lists with watcher defaults; otherwise replace them.",
+    )
 
 
 class CodeIntrospectionFilterConfig(FilterConfig):
@@ -60,11 +72,11 @@ class FileSystemConfig(BaseModel):
 
 
 class Config(BaseModel):
-    file_system: FileSystemConfig = Field(default_factory=FileSystemConfig)
-    filter: FilterConfig = Field(default_factory=FilterConfig)
+    file_system: FileSystemConfig = Field(default_factory=FileSystemConfig.model_construct)
+    filter: FilterConfig = Field(default_factory=FilterConfig.model_construct)
 
     @classmethod
-    def load_from_file_name(cls, file_name: Optional[str] = "default.yaml") -> "Config":
+    def load_from_file_name(cls, file_name: str = "default.yaml") -> "Config":
         config_path = get_config_path()
         config_file_path = config_path / file_name
         with open(config_file_path, "r") as f:

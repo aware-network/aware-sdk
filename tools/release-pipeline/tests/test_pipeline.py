@@ -339,9 +339,10 @@ def test_pipeline_cli_release_e2e(monkeypatch: pytest.MonkeyPatch, tmp_path: Pat
             data={"rules": {"manifest_path": "rules.json"}},
         )
 
-    def fake_tests(command, cwd):
+    def fake_tests(command, cwd, env=None):
         order.append("tests")
-        assert command[0:3] == ["uv", "run", "aware-tests"]
+        assert command[0:2] == ["uv", "run"]
+        assert "aware-tests" in command
         assert cwd == tmp_path
         return {"command": command, "returncode": 0, "stdout": "ok", "stderr": ""}
 

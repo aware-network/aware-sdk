@@ -7,14 +7,13 @@ with dramatic performance improvements through caching and incremental updates.
 
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, Dict, Set
+from typing import Optional, Dict, Set, Any
 import logging
 
 from aware_file_system.config import Config
-from aware_file_system.models import ProjectStructure, FileMetadata
-from .incremental_scanner import IncrementalScanner, ScanResult
-from ..coordination import CacheCoordinator, CacheableIndex, FileSystemChangeEvent, EventEmitter
-from aware_history.change.change_enums import ChangeType
+from aware_file_system.models import ProjectStructure, FileMetadata, ChangeType
+from aware_file_system.index.incremental_scanner import IncrementalScanner, ScanResult
+from aware_file_system.coordination import CacheCoordinator, CacheableIndex, FileSystemChangeEvent, EventEmitter
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +30,9 @@ class FileSystemIndex:
     5. Full compatibility with existing ProjectStructure interface
     """
 
-    def __init__(self, config: Config, cache_coordinator: Optional[CacheCoordinator] = None, cache_dir: Optional[str] = None):
+    def __init__(
+        self, config: Config, cache_coordinator: Optional[CacheCoordinator] = None, cache_dir: Optional[str] = None
+    ):
         """
         Initialize the file system index.
 
@@ -50,13 +51,15 @@ class FileSystemIndex:
 
         # Event emitter for cache coordination
         self.event_emitter = EventEmitter("FileSystemIndex")
-        
+
         # Register with cache coordinator if provided
         if cache_coordinator:
             cache_coordinator.register_index(self, "FileSystemIndex")
             self.event_emitter.add_handler(cache_coordinator)
 
-        logger.debug(f"Initialized FileSystemIndex for {self.root_path} with coordination: {cache_coordinator is not None}")
+        logger.debug(
+            f"Initialized FileSystemIndex for {self.root_path} with coordination: {cache_coordinator is not None}"
+        )
 
     def introspect(self, force_refresh: bool = False) -> ProjectStructure:
         """
@@ -263,7 +266,7 @@ class FileSystemIndex:
         """
         self.scanner.invalidate_session_cache()
         logger.debug("FileSystemIndex cache invalidated")
-    
+
     def invalidate_directory_cache(self) -> None:
         """
         Invalidate the directory cache, forcing a full directory rescan.
@@ -271,7 +274,7 @@ class FileSystemIndex:
         self.scanner.invalidate_directory_cache()
         logger.debug("FileSystemIndex directory cache invalidated")
 
-    def get_performance_stats(self) -> Dict[str, any]:
+    def get_performance_stats(self) -> Dict[str, Any]:
         """
         Get detailed performance statistics.
 
@@ -306,29 +309,29 @@ class FileSystemIndex:
     def invalidate_paths(self, paths: Set[str]) -> None:
         """
         Invalidate cache entries for specific paths (CacheableIndex interface).
-        
+
         This provides selective cache invalidation coordinated by the CacheCoordinator.
-        
+
         Args:
             paths: Set of relative paths that need cache invalidation
         """
         if not paths:
             return
-            
+
         # Selective session cache invalidation
         if self.scanner._session_cache:
             for path in paths:
                 self.scanner._session_cache.pop(path, None)
-                
-        # Selective directory cache invalidation  
+
+        # Selective directory cache invalidation
         self.scanner._dir_cache.invalidate_paths(paths)
-        
+
         logger.debug(f"FileSystemIndex: Invalidated {len(paths)} cache paths")
-        
+
     def invalidate_all(self) -> None:
         """
         Invalidate entire cache (CacheableIndex interface).
-        
+
         This is a fallback method used when selective invalidation fails.
         """
         self.scanner.invalidate_session_cache()
@@ -338,25 +341,25 @@ class FileSystemIndex:
     def _detect_changes_and_emit_events(self, scan_result: ScanResult) -> None:
         """
         Detect changes and emit events for cache coordination.
-        
+
         This method analyzes the scan result and emits appropriate change events
         for other components to coordinate their cache invalidation.
-        
+
         Args:
             scan_result: Result from incremental scan containing change information
         """
         if not self.cache_coordinator:
             return  # No coordination needed
-            
+
         # Collect all changed paths
         all_changed_paths = set()
         all_changed_paths.update(scan_result.added.keys())
         all_changed_paths.update(scan_result.modified.keys())
         all_changed_paths.update(scan_result.deleted)
-        
+
         if not all_changed_paths:
             return  # No changes detected
-            
+
         # Emit change event for coordination
         self.event_emitter.emit_change_event(
             change_type=ChangeType.UPDATE,  # Mixed changes - coordinator will handle details
@@ -364,14 +367,14 @@ class FileSystemIndex:
             additional_context={
                 "scan_stats": {
                     "files_added": len(scan_result.added),
-                    "files_modified": len(scan_result.modified), 
+                    "files_modified": len(scan_result.modified),
                     "files_deleted": len(scan_result.deleted),
                     "scan_time": scan_result.scan_time,
                     "cache_hit_ratio": scan_result.cache_hit_ratio,
                 }
-            }
+            },
         )
-        
+
         logger.debug(f"Emitted change event for {len(all_changed_paths)} affected paths")
 
     @classmethod

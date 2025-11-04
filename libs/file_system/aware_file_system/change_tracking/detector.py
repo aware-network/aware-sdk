@@ -10,9 +10,9 @@ class Detector:
         current_files = set(current_state.keys())
         previous_files = set(previous_state.keys())
 
-        changes.changes[ChangeType.ADDED] = list(current_files - previous_files)
-        changes.changes[ChangeType.DELETED] = list(previous_files - current_files)
-        changes.changes[ChangeType.MODIFIED] = [
+        changes.changes[ChangeType.CREATE] = list(current_files - previous_files)
+        changes.changes[ChangeType.DELETE] = list(previous_files - current_files)
+        changes.changes[ChangeType.UPDATE] = [
             file_path
             for file_path in current_files & previous_files
             if current_state[file_path].is_modified(previous_state[file_path])

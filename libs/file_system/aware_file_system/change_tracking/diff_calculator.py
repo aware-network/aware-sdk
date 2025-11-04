@@ -18,7 +18,7 @@ class DiffCalculator:
             return Diff(
                 file_path=current_file.path,
                 file_type=current_file.file_type,
-                change_type=ChangeType.ADDED,
+                change_type=ChangeType.CREATE,
                 diff_content=f"New file: {current_file.path}",
                 new_content=current_file.content,
             )
@@ -37,7 +37,7 @@ class DiffCalculator:
         return Diff(
             file_path=current_file.path,
             file_type=current_file.file_type,
-            change_type=ChangeType.MODIFIED,
+            change_type=ChangeType.UPDATE,
             diff_content=diff_content,
         )
 

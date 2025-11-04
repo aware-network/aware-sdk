@@ -99,9 +99,9 @@ class FileMetadata(BaseModel):
 
 
 class ChangeType(str, Enum):
-    ADDED = "added"
-    MODIFIED = "modified"
-    DELETED = "deleted"
+    CREATE = "create"
+    DELETE = "delete"
+    UPDATE = "update"
 
 
 class Changes(BaseModel):

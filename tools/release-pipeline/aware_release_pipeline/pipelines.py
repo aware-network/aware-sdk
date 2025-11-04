@@ -3,7 +3,6 @@ from __future__ import annotations
 import os
 import shutil
 import subprocess
-import sys
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -1028,6 +1027,7 @@ def _pipeline_sdk_release(context: PipelineContext) -> PipelineResult:
         }
     else:
         env = os.environ.copy()
+        env.setdefault("UV_NO_WORKSPACE", "1")
         env["AWARE_ROOT"] = str(staging_root)
         manifest_dirs = str(staging_root / "tools" / "test-runner" / "configs" / "manifests")
         existing_manifest_dirs = env.get("AWARE_TEST_RUNNER_MANIFEST_DIRS")
@@ -1036,21 +1036,23 @@ def _pipeline_sdk_release(context: PipelineContext) -> PipelineResult:
             if not existing_manifest_dirs
             else os.pathsep.join([manifest_dirs, existing_manifest_dirs])
         )
-        pythonpath = env.get("PYTHONPATH")
-        env["PYTHONPATH"] = (
-            str(staging_root)
-            if not pythonpath
-            else os.pathsep.join([str(staging_root), pythonpath])
-        )
         existing_pytest_opts = env.get("PYTEST_ADDOPTS")
         filter_expr = "-k 'not publish_pypi'"
         env["PYTEST_ADDOPTS"] = (
             filter_expr if not existing_pytest_opts else f"{existing_pytest_opts} {filter_expr}"
         )
         tests_command = [
-            sys.executable,
-            "-m",
-            "aware_test_runner.test_runner",
+            "uv",
+            "run",
+            "--project",
+            str(staging_root / "tools" / "test-runner"),
+            "--with",
+            str(staging_root / "tools" / "release"),
+            "--with",
+            str(staging_root / "tools" / "release-pipeline"),
+            "--with",
+            f"{staging_root / 'libs' / 'file_system'}[test]",
+            "aware-tests",
             "--manifest",
             "oss",
             "--stable",
