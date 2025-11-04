@@ -23,13 +23,10 @@ jobs:
           echo "${HOME}/.local/bin" >> $GITHUB_PATH
 
       - name: Install project dependencies
-        env:
-          UV_NO_WORKSPACE: "1"
         run: |
-          uv sync --project tools/release
-          uv sync --project tools/release-pipeline
-          uv sync --project tools/test-runner
-          uv sync --project libs/file_system
+          uv pip install --no-build-isolation --editable tools/release
+          uv pip install --no-build-isolation --editable tools/release-pipeline
+          uv pip install --no-build-isolation --editable libs/file_system
 
       - name: Run OSS suites
         env:
