@@ -242,6 +242,67 @@ def test_cli_sdk_sync(tmp_path: Path) -> None:
     assert dry_payload["status"] == "dry_run"
 
 
+def test_cli_sdk_publish(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    from types import SimpleNamespace
+
+    target_root = tmp_path / "target"
+    target_root.mkdir()
+    (target_root / ".git").mkdir()
+
+    class FakeResult:
+        status = "ok"
+        artifacts: dict[str, object] = {}
+        receipts: dict[str, object] = {}
+        logs: list[str] = []
+        next_steps: list[str] = []
+        data = {"version": {"new": "0.5.1"}}
+
+    calls: list[tuple[tuple[str, ...], Path]] = []
+
+    def fake_pipeline(**kwargs):
+        return FakeResult()
+
+    def fake_sync(export_root: str, target_root: str, dry_run: bool) -> dict[str, object]:
+        calls.append((("sync",), Path(target_root)))
+        return {"status": "synced"}
+
+    def fake_git(args, *, cwd, capture_output=False):
+        calls.append((tuple(args), Path(cwd)))
+        if args and args[0] == "git" and "status" in args:
+            return SimpleNamespace(stdout=" M README.md\n")
+        if args and args[0] == "git" and "rev-parse" in args:
+            return SimpleNamespace(stdout="abc123\n")
+        return SimpleNamespace(stdout="")
+
+    import aware_release_pipeline.cli as pipeline_cli
+
+    monkeypatch.setattr(pipeline_cli, "_run_sdk_pipeline", fake_pipeline)
+    monkeypatch.setattr(pipeline_cli, "_sync_sdk_export", fake_sync)
+    monkeypatch.setattr(pipeline_cli, "_run_git_command", fake_git)
+
+    payload = pipeline_cli._publish_sdk_export(
+        workspace_root=str(tmp_path),
+        target_root=str(target_root),
+        branch="main",
+        skip_versioning=True,
+        skip_workflow=True,
+        pipeline_dry_run=False,
+        skip_push=False,
+        commit_message=None,
+    )
+    assert payload["status"] == "ok"
+    assert payload["version"] == "0.5.1"
+    assert payload["message"] == "chore: sync aware-sdk 0.5.1"
+    assert payload["commit"] == "abc123"
+    assert payload["pushed"] is True
+
+    git_commands = [call[0] for call in calls if call[0][0] == "git"]
+    assert ("git", "checkout", "main") in git_commands
+    assert ("git", "add", "-A") in git_commands
+    assert ("git", "commit", "-m", "chore: sync aware-sdk 0.5.1") in git_commands
+    assert ("git", "push", "origin", "main") in git_commands
+
+
 def test_cli_pipeline_list() -> None:
     cmd = [
         sys.executable,

@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 from typing import Dict, List
@@ -21,6 +22,7 @@ from .pipeline import (
 from .pipelines import (
     PipelineContext,
     PipelineError,
+    PipelineResult,
     PipelineSpec,
     get_pipeline as get_pipeline_spec,
     list_pipelines as list_pipeline_specs,
@@ -147,6 +149,16 @@ def main(argv: list[str] | None = None) -> int:
     sdk_sync.add_argument("--target", required=True)
     sdk_sync.add_argument("--dry-run", action=argparse.BooleanOptionalAction, default=False)
 
+    sdk_publish = sdk_subparsers.add_parser("publish", help="Run the sdk-release pipeline, sync the export, commit, and push")
+    sdk_publish.add_argument("--target", required=True)
+    sdk_publish.add_argument("--branch", required=True)
+    sdk_publish.add_argument("--workspace-root", default=".")
+    sdk_publish.add_argument("--skip-versioning", action=argparse.BooleanOptionalAction, default=True)
+    sdk_publish.add_argument("--skip-workflow", action=argparse.BooleanOptionalAction, default=True)
+    sdk_publish.add_argument("--pipeline-dry-run", action=argparse.BooleanOptionalAction, default=False)
+    sdk_publish.add_argument("--skip-push", action=argparse.BooleanOptionalAction, default=False)
+    sdk_publish.add_argument("--commit-message")
+
     pipeline_cmd = subparsers.add_parser("pipeline", help="Composite pipeline registry commands")
     pipeline_subparsers = pipeline_cmd.add_subparsers(dest="pipeline_command", required=True)
 
@@ -181,6 +193,20 @@ def main(argv: list[str] | None = None) -> int:
                 export_root=args.export_root,
                 target_root=args.target,
                 dry_run=args.dry_run,
+            )
+            print(json.dumps(payload, indent=2))
+            return 0
+
+        if args.sdk_command == "publish":
+            payload = _publish_sdk_export(
+                workspace_root=args.workspace_root,
+                target_root=args.target,
+                branch=args.branch,
+                skip_versioning=args.skip_versioning,
+                skip_workflow=args.skip_workflow,
+                pipeline_dry_run=args.pipeline_dry_run,
+                skip_push=args.skip_push,
+                commit_message=args.commit_message,
             )
             print(json.dumps(payload, indent=2))
             return 0
@@ -404,6 +430,104 @@ def _sync_sdk_export(*, export_root: str, target_root: str, dry_run: bool) -> Di
         "status": "synced",
         "export_root": str(export_path),
         "target_root": str(target_path),
+    }
+
+
+def _run_sdk_pipeline(
+    *,
+    workspace_root: Path,
+    skip_versioning: bool,
+    skip_workflow: bool,
+    dry_run: bool,
+) -> PipelineResult:
+    spec = get_pipeline_spec("sdk-release")
+    context = PipelineContext(
+        workspace_root=workspace_root,
+        inputs={
+            "skip-versioning": skip_versioning,
+            "skip-workflow": skip_workflow,
+            "dry-run": dry_run,
+        },
+        raw_inputs={},
+    )
+    return spec.runner(context)
+
+
+def _run_git_command(args: List[str], *, cwd: Path, capture_output: bool = False) -> subprocess.CompletedProcess:
+    return subprocess.run(
+        args,
+        cwd=str(cwd),
+        check=True,
+        text=True,
+        capture_output=capture_output,
+    )
+
+
+def _publish_sdk_export(
+    *,
+    workspace_root: str,
+    target_root: str,
+    branch: str,
+    skip_versioning: bool,
+    skip_workflow: bool,
+    pipeline_dry_run: bool,
+    skip_push: bool,
+    commit_message: str | None,
+) -> Dict[str, object]:
+    workspace = Path(workspace_root).resolve()
+    target = Path(target_root).resolve()
+
+    pipeline_result = _run_sdk_pipeline(
+        workspace_root=workspace,
+        skip_versioning=skip_versioning,
+        skip_workflow=skip_workflow,
+        dry_run=pipeline_dry_run,
+    )
+    if pipeline_result.status != "ok":
+        raise PipelineError("sdk-release pipeline did not complete successfully")
+
+    export_root = workspace / "build" / "sdk-export"
+    sync_payload = _sync_sdk_export(
+        export_root=str(export_root),
+        target_root=str(target),
+        dry_run=False,
+    )
+
+    if not target.exists() or not (target / ".git").is_dir():
+        raise RuntimeError(f"Target path {target} is not a git repository")
+
+    _run_git_command(["git", "checkout", branch], cwd=target)
+    status_proc = _run_git_command(["git", "status", "--porcelain"], cwd=target, capture_output=True)
+    if not status_proc.stdout.strip():
+        return {
+            "status": "skipped",
+            "reason": "No changes to commit",
+            "sync": sync_payload,
+            "pipeline": pipeline_result.data,
+        }
+
+    _run_git_command(["git", "add", "-A"], cwd=target)
+
+    version_info = pipeline_result.data.get("version", {}) if pipeline_result.data else {}
+    new_version = version_info.get("new") or "unknown"
+    message = commit_message or f"chore: sync aware-sdk {new_version}"
+
+    _run_git_command(["git", "commit", "-m", message], cwd=target)
+    rev_proc = _run_git_command(["git", "rev-parse", "HEAD"], cwd=target, capture_output=True)
+    commit_sha = rev_proc.stdout.strip()
+
+    if not skip_push:
+        _run_git_command(["git", "push", "origin", branch], cwd=target)
+
+    return {
+        "status": "ok",
+        "version": new_version,
+        "commit": commit_sha,
+        "message": message,
+        "branch": branch,
+        "pushed": not skip_push,
+        "sync": sync_payload,
+        "pipeline": pipeline_result.data,
     }
 
 
