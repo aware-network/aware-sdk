@@ -29,7 +29,6 @@ from aware_release.workflows import WorkflowTriggerError, trigger_workflow
 SDK_EXPORT_BASE_DIRS = ["aware_sdk", "tests", ".github"]
 SDK_EXPORT_BASE_FILES = [".gitignore", "pyproject.toml", "README.md", "CHANGELOG.md", "LICENSE", "uv.lock"]
 SDK_EXPORT_ENTRIES = [
-    ("environments", "environments"),
     ("libs/file_system", "libs/file_system"),
     ("libs/environment", "libs/environment"),
     ("tools/release", "tools/release"),
@@ -213,9 +212,7 @@ def _run_uv_build(
         env=merged_env,
     )
     if result.returncode != 0:
-        raise PipelineError(
-            f"uv build failed ({result.returncode}): {result.stderr.strip() or result.stdout.strip()}"
-        )
+        raise PipelineError(f"uv build failed ({result.returncode}): {result.stderr.strip() or result.stdout.strip()}")
 
     wheels = sorted(out_path.glob("*.whl"))
     if not wheels:
@@ -1171,9 +1168,7 @@ def _pipeline_sdk_release(context: PipelineContext) -> PipelineResult:
         manifest_dirs = str(staging_root / "aware_sdk" / "configs" / "manifests")
         existing_manifest_dirs = env.get("AWARE_TEST_RUNNER_MANIFEST_DIRS")
         env["AWARE_TEST_RUNNER_MANIFEST_DIRS"] = (
-            manifest_dirs
-            if not existing_manifest_dirs
-            else os.pathsep.join([manifest_dirs, existing_manifest_dirs])
+            manifest_dirs if not existing_manifest_dirs else os.pathsep.join([manifest_dirs, existing_manifest_dirs])
         )
         env["AWARE_TERMINAL_DEV_ROOT"] = str(staging_root)
         env["AWARE_TERMINAL_MANIFEST_ROOT"] = str(
@@ -1181,62 +1176,62 @@ def _pipeline_sdk_release(context: PipelineContext) -> PipelineResult:
         )
         stub_script = staging_root / "tools" / "terminal" / "_ci_update_provider_versions.py"
         stub_script.write_text(
-                "\n".join(
-                    [
-                        "#!/usr/bin/env python3",
-                        "from __future__ import annotations",
-                        "import json",
-                        "import os",
-                        "from datetime import datetime, timezone",
-                        "from pathlib import Path",
-                        "import sys",
-                        "",
-                        "def _provider_root() -> Path:",
-                        "    env_override = os.environ.get('AWARE_TERMINAL_MANIFEST_ROOT')",
-                        "    if env_override:",
-                        "        return Path(env_override).expanduser().resolve()",
-                        "    if len(sys.argv) > 1:",
-                        "        return Path(sys.argv[1]).expanduser().resolve()",
-                        "    return Path(__file__).resolve().parents[2] / 'libs' / 'providers' / 'terminal' / 'aware_terminal_providers' / 'providers'",
-                        "",
-                        "def main() -> int:",
-                        "    root = _provider_root()",
-                        "    if not root.exists():",
-                        "        return 0",
-                        "    timestamp = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace('+00:00', 'Z')",
-                        "    for manifest_path in root.glob('*/releases.json'):",
-                        "        try:",
-                        "            data = json.loads(manifest_path.read_text(encoding='utf-8'))",
-                        "        except Exception:",
-                        "            data = {'provider': manifest_path.parent.name, 'channels': {}}",
-                        "        channels = data.setdefault('channels', {})",
-                        "        if not isinstance(channels, dict):",
-                        "            channels = {}",
-                        "            data['channels'] = channels",
-                        "        if not channels:",
-                        "            channels['latest'] = {}",
-                        "        for channel in channels.values():",
-                        "            if isinstance(channel, dict):",
-                        "                channel['updated_at'] = timestamp",
-                        "        manifest_path.parent.mkdir(parents=True, exist_ok=True)",
-                        "        manifest_path.write_text(json.dumps(data, indent=2) + '\\n', encoding='utf-8')",
-                        "    return 0",
-                        "",
-                        "if __name__ == '__main__':",
-                        "    raise SystemExit(main())",
-                    ]
-                )
-                + "\n",
-                encoding="utf-8",
+            "\n".join(
+                [
+                    "#!/usr/bin/env python3",
+                    "from __future__ import annotations",
+                    "import json",
+                    "import os",
+                    "from datetime import datetime, timezone",
+                    "from pathlib import Path",
+                    "import sys",
+                    "",
+                    "def _provider_root() -> Path:",
+                    "    env_override = os.environ.get('AWARE_TERMINAL_MANIFEST_ROOT')",
+                    "    if env_override:",
+                    "        return Path(env_override).expanduser().resolve()",
+                    "    if len(sys.argv) > 1:",
+                    "        return Path(sys.argv[1]).expanduser().resolve()",
+                    "    return Path(__file__).resolve().parents[2] / 'libs' / 'providers' / 'terminal' / 'aware_terminal_providers' / 'providers'",
+                    "",
+                    "def main() -> int:",
+                    "    root = _provider_root()",
+                    "    if not root.exists():",
+                    "        return 0",
+                    "    timestamp = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace('+00:00', 'Z')",
+                    "    for manifest_path in root.glob('*/releases.json'):",
+                    "        try:",
+                    "            data = json.loads(manifest_path.read_text(encoding='utf-8'))",
+                    "        except Exception:",
+                    "            data = {'provider': manifest_path.parent.name, 'channels': {}}",
+                    "        channels = data.setdefault('channels', {})",
+                    "        if not isinstance(channels, dict):",
+                    "            channels = {}",
+                    "            data['channels'] = channels",
+                    "        if not channels:",
+                    "            channels['latest'] = {}",
+                    "        for channel in channels.values():",
+                    "            if isinstance(channel, dict):",
+                    "                channel['updated_at'] = timestamp",
+                    "        manifest_path.parent.mkdir(parents=True, exist_ok=True)",
+                    "        manifest_path.write_text(json.dumps(data, indent=2) + '\\n', encoding='utf-8')",
+                    "    return 0",
+                    "",
+                    "if __name__ == '__main__':",
+                    "    raise SystemExit(main())",
+                ]
             )
+            + "\n",
+            encoding="utf-8",
+        )
         stub_script.chmod(0o755)
-        env["AWARE_TERMINAL_MANIFEST_UPDATE_SCRIPT"] = str(staging_root / "tools" / "terminal" / "_ci_update_provider_versions.py")
+        env["AWARE_TERMINAL_MANIFEST_UPDATE_SCRIPT"] = str(
+            staging_root / "tools" / "terminal" / "_ci_update_provider_versions.py"
+        )
         env["AWARE_TERMINAL_ALLOW_MANIFEST_REFRESH"] = "1"
         existing_pytest_opts = env.get("PYTEST_ADDOPTS")
         filter_expr = "-k 'not publish_pypi'"
-        env["PYTEST_ADDOPTS"] = (
-            filter_expr if not existing_pytest_opts else f"{existing_pytest_opts} {filter_expr}"
-        )
+        env["PYTEST_ADDOPTS"] = filter_expr if not existing_pytest_opts else f"{existing_pytest_opts} {filter_expr}"
         tests_command = [
             "uv",
             "run",
@@ -1248,8 +1243,6 @@ def _pipeline_sdk_release(context: PipelineContext) -> PipelineResult:
             str(staging_root / "tools" / "release-pipeline"),
             "--with",
             f"{staging_root / 'libs' / 'file_system'}[test]",
-            "--with",
-            str(staging_root / "environments"),
             "--with",
             str(staging_root / "libs" / "environment"),
             "--with",
@@ -1436,11 +1429,15 @@ def _register_builtin_pipelines() -> None:
             runner=_pipeline_tests_release,
             inputs={
                 "bump": PipelineInputSpec(description="Version bump type (patch/minor/major)", default="patch"),
-                "skip-versioning": PipelineInputSpec(description="Skip version/changelog updates (true/false)", default="false"),
+                "skip-versioning": PipelineInputSpec(
+                    description="Skip version/changelog updates (true/false)", default="false"
+                ),
                 "changelog-entry": PipelineInputSpec(description="Additional changelog bullet", multiple=True),
                 "skip-tests": PipelineInputSpec(description="Skip tests execution (true/false)", default="false"),
                 "skip-workflow": PipelineInputSpec(description="Skip publish workflow (true/false)", default="false"),
-                "workflow-dry-run": PipelineInputSpec(description="Publish workflow dry-run (true/false)", default="true"),
+                "workflow-dry-run": PipelineInputSpec(
+                    description="Publish workflow dry-run (true/false)", default="true"
+                ),
                 "dry-run": PipelineInputSpec(description="Pipeline dry-run (true/false)", default="false"),
             },
             artifacts=["wheels", "version"],
@@ -1455,11 +1452,15 @@ def _register_builtin_pipelines() -> None:
             runner=_pipeline_file_system_release,
             inputs={
                 "bump": PipelineInputSpec(description="Version bump type (patch/minor/major)", default="patch"),
-                "skip-versioning": PipelineInputSpec(description="Skip version/changelog updates (true/false)", default="false"),
+                "skip-versioning": PipelineInputSpec(
+                    description="Skip version/changelog updates (true/false)", default="false"
+                ),
                 "changelog-entry": PipelineInputSpec(description="Additional changelog bullet", multiple=True),
                 "skip-tests": PipelineInputSpec(description="Skip tests execution (true/false)", default="false"),
                 "skip-workflow": PipelineInputSpec(description="Skip publish workflow (true/false)", default="false"),
-                "workflow-dry-run": PipelineInputSpec(description="Publish workflow dry-run (true/false)", default="true"),
+                "workflow-dry-run": PipelineInputSpec(
+                    description="Publish workflow dry-run (true/false)", default="true"
+                ),
                 "dry-run": PipelineInputSpec(description="Pipeline dry-run (true/false)", default="false"),
             },
             artifacts=["wheels"],
@@ -1474,11 +1475,15 @@ def _register_builtin_pipelines() -> None:
             runner=_pipeline_environment_release,
             inputs={
                 "bump": PipelineInputSpec(description="Version bump type (patch/minor/major)", default="patch"),
-                "skip-versioning": PipelineInputSpec(description="Skip version/changelog updates (true/false)", default="false"),
+                "skip-versioning": PipelineInputSpec(
+                    description="Skip version/changelog updates (true/false)", default="false"
+                ),
                 "changelog-entry": PipelineInputSpec(description="Additional changelog bullet", multiple=True),
                 "skip-tests": PipelineInputSpec(description="Skip tests execution (true/false)", default="false"),
                 "skip-workflow": PipelineInputSpec(description="Skip publish workflow (true/false)", default="false"),
-                "workflow-dry-run": PipelineInputSpec(description="Publish workflow dry-run (true/false)", default="true"),
+                "workflow-dry-run": PipelineInputSpec(
+                    description="Publish workflow dry-run (true/false)", default="true"
+                ),
                 "dry-run": PipelineInputSpec(description="Pipeline dry-run (true/false)", default="false"),
             },
             artifacts=["wheels"],
@@ -1493,11 +1498,15 @@ def _register_builtin_pipelines() -> None:
             runner=_pipeline_sdk_release,
             inputs={
                 "bump": PipelineInputSpec(description="Version bump type (patch/minor/major)", default="patch"),
-                "skip-versioning": PipelineInputSpec(description="Skip version/changelog updates (true/false)", default="false"),
+                "skip-versioning": PipelineInputSpec(
+                    description="Skip version/changelog updates (true/false)", default="false"
+                ),
                 "changelog-entry": PipelineInputSpec(description="Additional changelog bullet", multiple=True),
                 "skip-tests": PipelineInputSpec(description="Skip tests execution (true/false)", default="false"),
                 "skip-workflow": PipelineInputSpec(description="Skip publish workflow (true/false)", default="false"),
-                "workflow-dry-run": PipelineInputSpec(description="Publish workflow dry-run (true/false)", default="true"),
+                "workflow-dry-run": PipelineInputSpec(
+                    description="Publish workflow dry-run (true/false)", default="true"
+                ),
                 "dry-run": PipelineInputSpec(description="Pipeline dry-run (true/false)", default="false"),
             },
             artifacts=["wheels"],
@@ -1512,7 +1521,9 @@ def _register_builtin_pipelines() -> None:
             runner=_pipeline_terminal_release,
             inputs={
                 "skip-tests": PipelineInputSpec(description="Skip tests execution (true/false)", default="false"),
-                "include-control-center": PipelineInputSpec(description="Also build/test aware-terminal-control-center", default="false"),
+                "include-control-center": PipelineInputSpec(
+                    description="Also build/test aware-terminal-control-center", default="false"
+                ),
             },
             artifacts=["wheels"],
             receipts=["aware-terminal", "aware-terminal-providers", "aware-terminal-control-center"],
@@ -1552,7 +1563,9 @@ def _register_builtin_pipelines() -> None:
                 "rules-root": PipelineInputSpec(description="Rules root directory", default="docs/rules"),
                 "manifest": PipelineInputSpec(description="Manifest output path", default="build/rule-manifest.json"),
                 "update-current": PipelineInputSpec(description="Update strategy for rules/current", default="copy"),
-                "keep-manifest": PipelineInputSpec(description="Append to existing manifest (true/false)", default="false"),
+                "keep-manifest": PipelineInputSpec(
+                    description="Append to existing manifest (true/false)", default="false"
+                ),
             },
             artifacts=["manifest"],
         )
@@ -1568,7 +1581,9 @@ def _register_builtin_pipelines() -> None:
                     description="Root directory containing provider manifests",
                     default="libs/providers/terminal/aware_terminal_providers/providers",
                 ),
-                "skip-refresh": PipelineInputSpec(description="Skip provider refresh step (true/false)", default="false"),
+                "skip-refresh": PipelineInputSpec(
+                    description="Skip provider refresh step (true/false)", default="false"
+                ),
             },
             artifacts=["manifests"],
         )
@@ -1587,14 +1602,18 @@ def _register_builtin_pipelines() -> None:
                 "bump": PipelineInputSpec(description="Version bump type (patch/minor/major)", default="patch"),
                 "skip-versioning": PipelineInputSpec(description="Skip version update (true/false)", default="false"),
                 "changelog-entry": PipelineInputSpec(description="Changelog bullet entry", multiple=True),
-                "skip-build": PipelineInputSpec(description="Skip building aware-cli wheel (true/false)", default="false"),
+                "skip-build": PipelineInputSpec(
+                    description="Skip building aware-cli wheel (true/false)", default="false"
+                ),
                 "build-project": PipelineInputSpec(description="Project path for uv build", default="tools/cli"),
                 "build-out-dir": PipelineInputSpec(description="Output directory for built wheels", default="dist"),
                 "build-arg": PipelineInputSpec(description="Extra arguments for uv build", multiple=True),
                 "rules-root": PipelineInputSpec(description="Rules root directory"),
                 "manifest": PipelineInputSpec(description="Rules manifest output path"),
                 "update-current": PipelineInputSpec(description="Update rules/current strategy"),
-                "keep-manifest": PipelineInputSpec(description="Append to existing manifest (true/false)", default="false"),
+                "keep-manifest": PipelineInputSpec(
+                    description="Append to existing manifest (true/false)", default="false"
+                ),
                 "skip-tests": PipelineInputSpec(description="Skip Aware test suite (true/false)", default="false"),
                 "tests-command": PipelineInputSpec(description="Override test command (list entries)", multiple=True),
                 "skip-workflow": PipelineInputSpec(description="Skip workflow dispatch (true/false)", default="false"),
@@ -1607,7 +1626,9 @@ def _register_builtin_pipelines() -> None:
                 "dry-run": PipelineInputSpec(description="Global dry-run (true/false)", default="false"),
                 "publish-workspace": PipelineInputSpec(description="Workspace root override for publish"),
                 "publish-build-dir": PipelineInputSpec(description="Build directory for publish", default="dist"),
-                "publish-pyproject": PipelineInputSpec(description="aware-release pyproject path", default="tools/release/pyproject.toml"),
+                "publish-pyproject": PipelineInputSpec(
+                    description="aware-release pyproject path", default="tools/release/pyproject.toml"
+                ),
                 "publish-repository": PipelineInputSpec(description="PyPI repository", default="pypi"),
             },
             artifacts=["archive", "manifest", "rules_manifest", "wheels"],

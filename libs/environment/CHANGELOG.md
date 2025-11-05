@@ -2,6 +2,9 @@
 
 # Changelog
 
+## 0.1.3 - 2025-11-05
+- Cleanup - Decouple from kernel. No functional changes.
+
 ## 0.1.2 - 2025-11-05
 - Added `PatchInstruction` support to OperationPlans so diffs execute through the shared filesystem executor.
 - Extended receipts to record `diff_hash` metadata for patch operations.

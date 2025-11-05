@@ -69,7 +69,7 @@ $ aware-sdk
   "aware_test_runner": "0.2.0",
   "aware_file_system": "0.1.1",
   "aware_terminal": "0.3.3",
-  "aware-environment": "0.1.2"
+  "aware-environment": "0.1.3"
 }
 ```
 
