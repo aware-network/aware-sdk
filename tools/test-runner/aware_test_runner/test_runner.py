@@ -99,7 +99,7 @@ def main(argv: list[str] | None = None) -> int:
 
     parser.add_argument(
         "--manifest",
-        help="Manifest identifier to load (defaults to AWARE_TEST_RUNNER_MANIFEST or 'oss').",
+        help="Manifest identifier to load (required unless --manifest-file or AWARE_TEST_RUNNER_MANIFEST_FILE is provided).",
     )
 
     parser.add_argument(
@@ -133,7 +133,10 @@ def main(argv: list[str] | None = None) -> int:
     if args.stable and args.suites:
         parser.error("--stable cannot be combined with --suites")
 
-    manifest = load_manifest(manifest_id=args.manifest, manifest_file=args.manifest_file)
+    try:
+        manifest = load_manifest(manifest_id=args.manifest, manifest_file=args.manifest_file)
+    except FileNotFoundError as exc:
+        parser.error(str(exc))
     runner = AwareTestRunner(manifest=manifest)
 
     if args.list:

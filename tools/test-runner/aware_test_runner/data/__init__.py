@@ -1,1 +1,1 @@
-"""Package data for aware-test-runner (manifests, templates, etc.)."""
+"""Reserved package data namespace for aware-test-runner."""

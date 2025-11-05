@@ -1,5 +1,12 @@
 # Changelog
 
+# Changelog
+
+## [0.2.0] - 2025-11-05
+- Removed packaged fallback manifests; the runner now requires an explicit `--manifest`/`--manifest-file` or `AWARE_TEST_RUNNER_MANIFEST(_FILE)` override.
+- Relocated OSS manifests under `aware_sdk/configs/` (bundled via aware-sdk) and moved internal overlays to `configs/manifests/`.
+- Added documentation updates and env wiring so pipelines and developers point the runner at the new manifest locations.
+
 ## [0.1.4] - 2025-11-04
 - Relaxed workspace detection so aware-tests run against staged aware-sdk exports (falls back to pyproject markers or `AWARE_SDK_ROOT` when the monorepo isn't available).
 - Added SDK sync tooling references to the release pipeline to keep public mirrors aligned.

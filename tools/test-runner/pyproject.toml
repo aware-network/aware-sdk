@@ -1,6 +1,6 @@
 [project]
 name = "aware-test-runner"
-version = "0.1.4"
+version = "0.2.0"
 description = "Unified test runner for the Aware platform with OSS-ready packaging."
 requires-python = ">=3.10"
 license = { file = "LICENSE" }
@@ -54,11 +54,6 @@ allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
 packages = ["aware_test_runner", "aware_tests"]
-
-[tool.hatch.build.targets.wheel.force-include]
-"aware_test_runner/data/manifests/oss/manifest.json" = "aware_test_runner/data/manifests/oss/manifest.json"
-"aware_test_runner/data/manifests/oss/stable.json" = "aware_test_runner/data/manifests/oss/stable.json"
-"aware_test_runner/data/manifests/oss/runtime.json" = "aware_test_runner/data/manifests/oss/runtime.json"
 
 [tool.hatch.version]
 path = "aware_test_runner/__init__.py"

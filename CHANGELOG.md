@@ -1,7 +1,12 @@
 # Changelog
 
+## [0.6.1] - 2025-11-05
+- Bundled the OSS test manifests under `aware_sdk/configs/manifests/oss` and updated docs for the explicit manifest workflow.
+- Raised the `aware-test-runner` floor to `0.2.0` (manifest-less installs now require explicit manifest selection).
+
 ## [0.6.0] - 2025-11-05
 - Added `[terminal]` extra bundling `aware-terminal` and `aware-terminal-providers` for Studio integration workflows.
+- Published the OSS test manifests under `aware_sdk/configs/manifests` for use with `aware-test-runner`.
 
 ## [0.5.1] - 2025-11-04
 - Added `[test]` extra that bundles pytest tooling for monorepo suites.

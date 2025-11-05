@@ -8,7 +8,7 @@ from aware_test_runner.core.discovery import TestSuiteDiscovery
 
 def _load_oss_manifest() -> TestSuiteDiscovery:
     repo_root = Path(__file__).resolve().parents[3]
-    manifest_path = repo_root / "tools" / "test-runner" / "configs" / "manifests" / "oss" / "manifest.json"
+    manifest_path = repo_root / "apps" / "aware-sdk" / "aware_sdk" / "configs" / "manifests" / "oss" / "manifest.json"
     manifest = load_manifest(manifest_file=str(manifest_path))
     return TestSuiteDiscovery(str(repo_root), manifest)
 

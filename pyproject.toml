@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "aware-sdk"
-version = "0.6.0"
+version = "0.6.1"
 description = "Convenience bundle for installing Aware release tooling"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -25,7 +25,7 @@ classifiers = [
 keywords = ["aware", "sdk", "automation", "release"]
 dependencies = [
   "aware-release>=0.1.2",
-  "aware-test-runner>=0.1.4",
+  "aware-test-runner>=0.2.0",
   "aware-file-system>=0.1.1",
 ]
 
@@ -57,4 +57,5 @@ include = [
   "README.md",
   "CHANGELOG.md",
   "LICENSE",
+  "aware_sdk/configs/**",
 ]

@@ -754,7 +754,7 @@ def _pipeline_tests_release(context: PipelineContext) -> PipelineResult:
         env = os.environ.copy()
         env.setdefault(
             "AWARE_TEST_RUNNER_MANIFEST_DIRS",
-            str(workspace_root / "tools" / "test-runner" / "configs" / "manifests"),
+            str(workspace_root / "configs" / "manifests"),
         )
         tests_command = [
             "uv",
@@ -1031,7 +1031,7 @@ def _pipeline_sdk_release(context: PipelineContext) -> PipelineResult:
         env = os.environ.copy()
         env.setdefault("UV_NO_WORKSPACE", "1")
         env["AWARE_ROOT"] = str(staging_root)
-        manifest_dirs = str(staging_root / "tools" / "test-runner" / "configs" / "manifests")
+        manifest_dirs = str(staging_root / "aware_sdk" / "configs" / "manifests")
         existing_manifest_dirs = env.get("AWARE_TEST_RUNNER_MANIFEST_DIRS")
         env["AWARE_TEST_RUNNER_MANIFEST_DIRS"] = (
             manifest_dirs

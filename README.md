@@ -40,6 +40,26 @@ This command installs the following packages (with compatible versions):
 - [`aware-terminal-providers`](https://pypi.org/project/aware-terminal-providers/)
   — provider registry and workflows for Terminal automation.
 
+## Test manifests
+
+`aware-test-runner` expects callers to provide a manifest explicitly. The SDK
+bundles the canonical OSS definitions under
+`aware_sdk/configs/manifests/oss/`. Point
+`AWARE_TEST_RUNNER_MANIFEST_DIRS` (or `--manifest-file`) at that directory when
+you want to run the published suite matrix:
+
+```bash
+MANIFEST=$(python - <<'PY'
+import importlib.resources as res
+print(res.files('aware_sdk.configs.manifests.oss') / 'manifest.json')
+PY
+)
+aware-tests --manifest-file "$MANIFEST" --stable
+```
+
+Internal overlays live in the monorepo under `configs/manifests/` and can be
+composed the same way.
+
 ## CLI helper
 
 The package exposes a lightweight `aware-sdk` CLI that reports the installed
@@ -50,7 +70,7 @@ $ aware-sdk
 {
   "aware_sdk": "0.0.0",
   "aware_release": "0.1.2",
-  "aware_test_runner": "0.1.2",
+  "aware_test_runner": "0.2.0",
   "aware_file_system": "0.1.0"
 }
 ```

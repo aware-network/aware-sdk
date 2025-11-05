@@ -5,11 +5,10 @@ from __future__ import annotations
 import json
 import os
 from dataclasses import dataclass, field
-from importlib import resources
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Literal, Optional, Sequence, Tuple
 
-DEFAULT_MANIFEST_ID = "internal"
+DEFAULT_MANIFEST_ID: Optional[str] = None
 MANIFEST_ENV = "AWARE_TEST_RUNNER_MANIFEST"
 MANIFEST_FILE_ENV = "AWARE_TEST_RUNNER_MANIFEST_FILE"
 MANIFEST_DIRS_ENV = "AWARE_TEST_RUNNER_MANIFEST_DIRS"
@@ -69,14 +68,17 @@ def load_manifest(*, manifest_id: Optional[str] = None, manifest_file: Optional[
     if id_override:
         return _resolve_manifest_by_id(id_override, visited=set())
 
-    for candidate in _default_manifest_candidates():
+    attempted = []
+    if DEFAULT_MANIFEST_ID:
         try:
-            return _resolve_manifest_by_id(candidate, visited=set())
+            return _resolve_manifest_by_id(DEFAULT_MANIFEST_ID, visited=set())
         except FileNotFoundError:
-            continue
+            attempted.append(DEFAULT_MANIFEST_ID)
 
-    attempted = ", ".join(_default_manifest_candidates())
-    raise FileNotFoundError(f"Unable to locate a default manifest (tried: {attempted})")
+    raise FileNotFoundError(
+        "No test manifest provided. Supply --manifest or --manifest-file, or set "
+        "AWARE_TEST_RUNNER_MANIFEST / AWARE_TEST_RUNNER_MANIFEST_FILE."
+    )
 
 
 def _resolve_manifest_by_id(manifest_id: str, *, visited: set[str]) -> ManifestData:
@@ -95,18 +97,7 @@ def _resolve_manifest_by_id(manifest_id: str, *, visited: set[str]) -> ManifestD
             payload = _load_manifest_payload(candidate_file)
             return _normalize_manifest(manifest_id, payload, visited=visited)
 
-    # Fallback to package data
-    data_pkg = resources.files("aware_test_runner.data.manifests")
-    pkg_candidate_dir = data_pkg / manifest_id
-    if pkg_candidate_dir.is_dir():
-        payload = _load_manifest_directory(pkg_candidate_dir)
-        return _normalize_manifest(manifest_id, payload, visited=visited)
-    pkg_candidate_file = data_pkg / f"{manifest_id}.json"
-    if pkg_candidate_file.is_file():
-        payload = json.loads(pkg_candidate_file.read_text(encoding="utf-8"))
-        return _normalize_manifest(manifest_id, payload, visited=visited)
-
-    raise FileNotFoundError(f"Manifest '{manifest_id}' not found in manifest directories or package data.")
+    raise FileNotFoundError(f"Manifest '{manifest_id}' not found in configured manifest directories.")
 
 
 def _normalize_manifest(manifest_id: str, payload: Dict, *, visited: set[str]) -> ManifestData:
@@ -143,16 +134,24 @@ def _iter_manifest_directories() -> Iterable[Path]:
                 seen.add(path)
                 yield path
 
-    default = Path.cwd() / "configs" / "manifests"
-    if default.exists() and default not in seen:
-        seen.add(default)
-        yield default
+    cwd = Path.cwd().resolve()
+    for parent in [cwd, *cwd.parents]:
+        candidate = parent / "configs" / "manifests"
+        if candidate.exists() and candidate not in seen:
+            seen.add(candidate)
+            yield candidate
 
-    package_root = Path(__file__).resolve().parents[2]
-    repo_manifests = package_root / "configs" / "manifests"
-    if repo_manifests.exists() and repo_manifests not in seen:
-        seen.add(repo_manifests)
-        yield repo_manifests
+    for parent in [cwd, *cwd.parents]:
+        candidate = parent / "aware_sdk" / "configs" / "manifests"
+        if candidate.exists() and candidate not in seen:
+            seen.add(candidate)
+            yield candidate
+
+    for parent in [cwd, *cwd.parents]:
+        candidate = parent / "apps" / "aware-sdk" / "aware_sdk" / "configs" / "manifests"
+        if candidate.exists() and candidate not in seen:
+            seen.add(candidate)
+            yield candidate
 
 
 def _load_manifest_payload(source: Path) -> Dict:
@@ -435,10 +434,3 @@ def _runtime_entry_key(entry) -> Optional[str]:
 
 
 __all__ = ["ManifestData", "DiscoveryRule", "DiscoveryNameTemplate", "load_manifest", "DEFAULT_MANIFEST_ID"]
-def _default_manifest_candidates() -> List[str]:
-    candidates: List[str] = []
-    if DEFAULT_MANIFEST_ID:
-        candidates.append(DEFAULT_MANIFEST_ID)
-    if "oss" not in candidates:
-        candidates.append("oss")
-    return candidates

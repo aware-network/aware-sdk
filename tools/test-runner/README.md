@@ -4,9 +4,10 @@
 Aware platform. It exposes a tiny CLI (`aware-tests`) that mirrors our CI layout so
 contributors can run the same curated suites locally or inside automation.
 
-The project ships with an **OSS manifest** that exercises the open-source surface.
-Internal manifests live alongside the package and can be layered on top when the
-monorepo is present.
+The runner no longer bundles a default manifest. Always supply a manifest
+identifier or file path explicitly. The **aware-sdk** distribution publishes the
+OSS manifests under `aware_sdk/configs/manifests/oss`, and internal overlays live
+in the monorepo under `configs/manifests/internal`.
 
 ## Key capabilities
 
@@ -27,6 +28,13 @@ Requires Python 3.10+. The package works with both `pip` and `uv`. Extras will l
 once the internal split for our larger matrix is stabilised.
 
 ## Quick start
+
+Point the runner at your manifest directory (for the OSS bundle bundled with
+aware-sdk use `aware_sdk/configs/manifests`):
+
+```bash
+export AWARE_TEST_RUNNER_MANIFEST_DIRS=$PWD/aware_sdk/configs/manifests
+```
 
 Run the OSS stable suites:
 
@@ -53,10 +61,13 @@ Manifests can be controlled through identifiers, paths, or environment variables
 | Mechanism | Example |
 | --- | --- |
 | Named manifest | `aware-tests --manifest internal` |
-| Manifest file | `aware-tests --manifest-file configs/manifests/internal/stable.json` |
-| Directory search path | `AWARE_TEST_RUNNER_MANIFEST_DIRS=/tmp/manifests:$PWD/configs` |
+| Manifest file | `aware-tests --manifest-file aware_sdk/configs/manifests/oss/manifest.json` |
+| Directory search path | `AWARE_TEST_RUNNER_MANIFEST_DIRS=$PWD/aware_sdk/configs/manifests:$PWD/configs/manifests` |
 | Explicit identifier (env) | `AWARE_TEST_RUNNER_MANIFEST=runtime` |
 | Override file (env) | `AWARE_TEST_RUNNER_MANIFEST_FILE=/tmp/runtime.json` |
+
+The internal suite overlays live under `configs/manifests/internal/`; include
+that directory in `AWARE_TEST_RUNNER_MANIFEST_DIRS` when targeting private suites.
 
 Each manifest can inherit from another via an `extends` field, allowing the internal
 configuration to re-use the OSS baseline.
@@ -68,8 +79,11 @@ Add a job that configures the manifest directory and runs the stable matrix:
 ```yaml
 - name: Run OSS suites
   run: |
-    export AWARE_TEST_RUNNER_MANIFEST_DIRS=$GITHUB_WORKSPACE/tools/test-runner/configs/manifests
+    export AWARE_TEST_RUNNER_MANIFEST_DIRS=$GITHUB_WORKSPACE/aware_sdk/configs/manifests
     aware-tests --manifest oss --stable --no-warnings
+
+Internal jobs can point the same variable at `$GITHUB_WORKSPACE/configs/manifests`
+to pick up the private overlays.
 ```
 
 For larger installations we recommend pinning the manifest alongside the workspace
