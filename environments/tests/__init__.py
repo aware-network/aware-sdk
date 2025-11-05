@@ -1,0 +1,2 @@
+"""Kernel object test suite."""
+

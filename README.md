@@ -3,8 +3,8 @@
 `aware-sdk` is the baseline distribution for the Aware stack. It packages the
 CLI-first infrastructure that Release, Terminal, and future environment
 features share: automated publishing, manifest-driven testing, filesystem
-indexing, and the terminal runtime. Install it to recreate the same tooling the
-Aware release pipeline and Studio builds consume.
+indexing, the environment contract, and the terminal runtime. Install it to
+recreate the same tooling the Aware release pipeline and Studio builds consume.
 
 ## Installation
 
@@ -27,6 +27,8 @@ The SDK installs the following packages (with compatible versions):
   manifest tooling, and workflow helpers.
 - [`aware-test-runner`](https://pypi.org/project/aware-test-runner/) — manifest-
   driven test orchestration.
+- [`aware-environment`](https://pypi.org/project/aware-environment/) —
+  environment contracts and runtime executor for object/role/rule registries.
 - [`aware-file-system`](https://pypi.org/project/aware-file-system/) —
   filesystem watcher/indexer used by the CLI and SDK.
 - [`aware-terminal`](https://pypi.org/project/aware-terminal/) — terminal daemon
@@ -62,11 +64,12 @@ versions of the bundled components:
 ```bash
 $ aware-sdk
 {
-  "aware_sdk": "0.6.1",
+  "aware_sdk": "0.7.0",
   "aware_release": "0.1.2",
   "aware_test_runner": "0.2.0",
   "aware_file_system": "0.1.1",
-  "aware_terminal": "0.3.3"
+  "aware_terminal": "0.3.3",
+  "aware-environment": "0.1.2"
 }
 ```
 

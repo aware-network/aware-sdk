@@ -16,5 +16,12 @@ def test_cli_info_outputs_json(capsys) -> None:
     captured = capsys.readouterr()
     assert exit_code == 0
     payload = json.loads(captured.out)
-    assert "aware_sdk" in payload
-    assert "aware_release" in payload
+    for key in (
+        "aware_sdk",
+        "aware_release",
+        "aware_test_runner",
+        "aware_file_system",
+        "aware_environment",
+        "aware_terminal",
+    ):
+        assert key in payload

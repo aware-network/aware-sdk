@@ -1,0 +1,45 @@
+[project]
+name = "aware-environment"
+version = "0.1.2"
+description = "Contracts and runtime helpers for Aware environments (agents, roles, rules, objects)."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { file = "LICENSE" }
+authors = [
+  { name = "AWARE Team" }
+]
+classifiers = [
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.12",
+  "Operating System :: OS Independent",
+  "Intended Audience :: Developers"
+]
+keywords = ["aware", "environment", "agents", "rules", "automation"]
+dependencies = [
+  "pyyaml>=6.0.2,<7.0.0"
+]
+
+[project.optional-dependencies]
+test = [
+  "pytest>=8.4.2"
+]
+
+[project.urls]
+Homepage = "https://pypi.org/project/aware-environment/"
+Source = "https://github.com/aware-network/aware-sdk"
+Documentation = "https://github.com/aware-network/aware-sdk/tree/main/libs/environment/README.md"
+Changelog = "https://github.com/aware-network/aware-sdk/tree/main/libs/environment/CHANGELOG.md"
+Issues = "https://github.com/aware-network/aware-sdk/issues"
+
+[build-system]
+requires = ["hatchling>=1.27.0"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["aware_environment"]
+include = [
+  "README.md",
+  "CHANGELOG.md",
+  "LICENSE"
+]

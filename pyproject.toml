@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "aware-sdk"
-version = "0.6.1"
-description = "Convenience bundle for installing Aware release tooling"
+version = "0.7.0"
+description = "Infrastructure bundle for the Aware CLI stack (release, environment, terminal)"
 readme = "README.md"
 requires-python = ">=3.12"
 license = { file = "LICENSE" }
@@ -26,6 +26,7 @@ keywords = ["aware", "sdk", "automation", "release"]
 dependencies = [
   "aware-release>=0.1.2",
   "aware-test-runner>=0.2.0",
+  "aware-environment>=0.1.2",
   "aware-terminal>=0.3.3",
   "aware-terminal-providers>=0.1.1",
   "aware-file-system>=0.1.1",

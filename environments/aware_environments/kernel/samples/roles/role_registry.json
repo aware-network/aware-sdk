@@ -1,0 +1,42 @@
+{
+  "generated_at": "2025-08-05T00:00:00Z",
+  "roles": {
+    "sample-agent-runner": {
+      "id": "sample-agent-runner",
+      "title": "Sample Agent Runner",
+      "description": "Minimal role used for kernel/CLI fixtures.",
+      "policies": [
+        "04-agent-01-memory-hierarchy",
+        "02-task-01-lifecycle"
+      ],
+      "cli": {
+        "objects": {
+          "agent-thread-memory": [
+            "status",
+            "history"
+          ],
+          "task": [
+            "status",
+            "plan"
+          ]
+        }
+      },
+      "agents": [
+        "codex"
+      ],
+      "policy_details": [
+        {
+          "rule_id": "04-agent-01-memory-hierarchy",
+          "functions": [
+            "agent-thread-memory:status"
+          ],
+          "extras": [
+            "Ensure working memory is persisted"
+          ],
+          "title": "Agent memory guardrails",
+          "include_policy_text": false
+        }
+      ]
+    }
+  }
+}

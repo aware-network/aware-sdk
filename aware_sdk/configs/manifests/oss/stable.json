@@ -5,6 +5,7 @@
     "test-runner",
     "file_system",
     "terminal",
-    "terminal_providers"
+    "terminal_providers",
+    "environment"
   ]
 }

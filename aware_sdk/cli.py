@@ -16,6 +16,9 @@ def info() -> int:
         "aware_release": _safe_version("aware-release"),
         "aware_test_runner": _safe_version("aware-test-runner"),
         "aware_file_system": _safe_version("aware-file-system"),
+        "aware_environment": _safe_version("aware-environment"),
+        "aware_terminal": _safe_version("aware-terminal"),
+        "aware_terminal_providers": _safe_version("aware-terminal-providers"),
     }
     json.dump(payload, sys.stdout, indent=2)
     sys.stdout.write("\n")

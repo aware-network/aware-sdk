@@ -29,7 +29,9 @@ from aware_release.workflows import WorkflowTriggerError, trigger_workflow
 SDK_EXPORT_BASE_DIRS = ["aware_sdk", "tests", ".github"]
 SDK_EXPORT_BASE_FILES = [".gitignore", "pyproject.toml", "README.md", "CHANGELOG.md", "LICENSE", "uv.lock"]
 SDK_EXPORT_ENTRIES = [
+    ("environments", "environments"),
     ("libs/file_system", "libs/file_system"),
+    ("libs/environment", "libs/environment"),
     ("tools/release", "tools/release"),
     ("tools/release-pipeline", "tools/release-pipeline"),
     ("tools/test-runner", "tools/test-runner"),
@@ -253,6 +255,7 @@ def _copy_tree(src: Path, dst: Path) -> None:
             ".venv",
             ".git",
             ".eggs",
+            "*.egg-info",
         ),
     )
 
@@ -968,6 +971,140 @@ def _pipeline_file_system_release(context: PipelineContext) -> PipelineResult:
     )
 
 
+def _pipeline_environment_release(context: PipelineContext) -> PipelineResult:
+    workspace_root = context.workspace_root
+    bump_type = str(context.get("bump") or "patch")
+    skip_versioning = _to_bool(context.get("skip-versioning"))
+    dry_run = _to_bool(context.get("dry-run"))
+    timestamp = datetime.now(timezone.utc).replace(microsecond=0)
+    timestamp_iso = timestamp.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    project_dir = workspace_root / "libs" / "environment"
+    version_config = VersionConfig.from_project(
+        project_root=project_dir,
+        module_relpath="aware_environment/__init__.py",
+        changelog="CHANGELOG.md",
+    )
+
+    previous_version = read_version(version_config)
+    new_version = previous_version
+    changelog_entry = None
+
+    if not skip_versioning:
+        new_version = bump_version(previous_version, bump_type)
+        if not dry_run:
+            write_version(version_config, new_version)
+            summary_lines = context.get_list("changelog-entry")
+            changelog_entry = update_changelog(
+                version_config,
+                new_version,
+                timestamp,
+                [line for line in summary_lines if line],
+            )
+
+    logs: List[str] = []
+    receipts: Dict[str, object] = {}
+    artifacts: Dict[str, object] = {}
+
+    built_wheels, build_receipt = _run_uv_build(
+        workspace_root=workspace_root,
+        project="libs/environment",
+        out_dir="build/public/aware-environment/dist",
+        extra_args=[],
+    )
+    artifacts["wheels"] = built_wheels
+    receipts["build"] = build_receipt
+    if build_receipt.get("stdout"):
+        logs.append(build_receipt["stdout"])
+    if build_receipt.get("stderr"):
+        logs.append(build_receipt["stderr"])
+
+    skip_tests = _to_bool(context.get("skip-tests"))
+    if skip_tests:
+        tests_receipt = {
+            "status": "skipped",
+            "reason": "skip-tests flag enabled",
+            "timestamp": timestamp_iso,
+        }
+    else:
+        tests_command = [
+            "uv",
+            "run",
+            "--project",
+            "libs/environment",
+            "pytest",
+            "libs/environment/tests",
+        ]
+        env = os.environ.copy()
+        env.setdefault("UV_NO_WORKSPACE", "1")
+        tests_receipt = _run_release_tests(command=tests_command, cwd=workspace_root, env=env)
+        logs.append(tests_receipt.get("stdout", ""))
+        if tests_receipt.get("stderr"):
+            logs.append(tests_receipt["stderr"])
+    receipts["tests"] = tests_receipt
+
+    skip_workflow = _to_bool(context.get("skip-workflow"))
+    workflow_dry_run = _to_bool(context.get("workflow-dry-run"))
+    workflow_receipt: Dict[str, object]
+    if skip_workflow:
+        workflow_receipt = {
+            "status": "skipped",
+            "reason": "skip-workflow flag enabled",
+            "timestamp": timestamp_iso,
+        }
+    else:
+        spec = get_workflow("environment-release")
+        workflow_inputs = {
+            "version": new_version,
+            "dry_run": "true" if workflow_dry_run else "false",
+            "timestamp": timestamp_iso,
+        }
+        try:
+            dispatch_result = trigger_workflow(
+                spec,
+                inputs=workflow_inputs,
+                dry_run=workflow_dry_run,
+            )
+        except WorkflowTriggerError as exc:
+            workflow_receipt = {
+                "status": "failed",
+                "timestamp": timestamp_iso,
+                "error": str(exc),
+            }
+            receipts["workflow"] = workflow_receipt
+            raise PipelineError(str(exc)) from exc
+        workflow_receipt = {
+            "status": "skipped" if dispatch_result.dry_run else "ok",
+            "timestamp": timestamp_iso,
+            "payload": dispatch_result.model_dump(mode="json"),
+        }
+    receipts["workflow"] = workflow_receipt
+
+    receipts["version"] = {
+        "previous": previous_version,
+        "new": new_version,
+        "bump": bump_type,
+        "timestamp": timestamp_iso,
+        "changelog": str(project_dir / "CHANGELOG.md"),
+        "changelog_entry": changelog_entry,
+        "skip_versioning": skip_versioning,
+        "dry_run": dry_run,
+    }
+
+    return PipelineResult(
+        status="ok",
+        artifacts=artifacts,
+        receipts=receipts,
+        logs=[log for log in logs if log],
+        data={
+            "version": receipts["version"],
+            "build": build_receipt,
+            "tests": tests_receipt,
+            "workflow": workflow_receipt,
+        },
+    )
+
+
 def _pipeline_sdk_release(context: PipelineContext) -> PipelineResult:
     workspace_root = context.workspace_root
     bump_type = str(context.get("bump") or "patch")
@@ -1111,6 +1248,10 @@ def _pipeline_sdk_release(context: PipelineContext) -> PipelineResult:
             str(staging_root / "tools" / "release-pipeline"),
             "--with",
             f"{staging_root / 'libs' / 'file_system'}[test]",
+            "--with",
+            str(staging_root / "environments"),
+            "--with",
+            str(staging_root / "libs" / "environment"),
             "--with",
             f"{staging_root / 'tools' / 'terminal'}[test]",
             "--with",
@@ -1312,6 +1453,25 @@ def _register_builtin_pipelines() -> None:
             slug="file-system-release",
             description="Build, test, and publish aware-file-system package.",
             runner=_pipeline_file_system_release,
+            inputs={
+                "bump": PipelineInputSpec(description="Version bump type (patch/minor/major)", default="patch"),
+                "skip-versioning": PipelineInputSpec(description="Skip version/changelog updates (true/false)", default="false"),
+                "changelog-entry": PipelineInputSpec(description="Additional changelog bullet", multiple=True),
+                "skip-tests": PipelineInputSpec(description="Skip tests execution (true/false)", default="false"),
+                "skip-workflow": PipelineInputSpec(description="Skip publish workflow (true/false)", default="false"),
+                "workflow-dry-run": PipelineInputSpec(description="Publish workflow dry-run (true/false)", default="true"),
+                "dry-run": PipelineInputSpec(description="Pipeline dry-run (true/false)", default="false"),
+            },
+            artifacts=["wheels"],
+            receipts=["version", "build", "tests", "workflow"],
+        )
+    )
+
+    register_pipeline(
+        PipelineSpec(
+            slug="environment-release",
+            description="Build, test, and publish aware-environment package.",
+            runner=_pipeline_environment_release,
             inputs={
                 "bump": PipelineInputSpec(description="Version bump type (patch/minor/major)", default="patch"),
                 "skip-versioning": PipelineInputSpec(description="Skip version/changelog updates (true/false)", default="false"),

@@ -51,6 +51,17 @@ WORKFLOWS: Dict[str, WorkflowSpec] = {
             "timestamp": WorkflowInputSpec(description="Release timestamp"),
         },
     ),
+    "environment-release": WorkflowSpec(
+        slug="environment-release",
+        repo=DEFAULT_REPO,
+        workflow="publish-aware-environment.yml",
+        description="Publish aware-environment package (GitHub + PyPI).",
+        inputs={
+            "version": WorkflowInputSpec(description="Version to publish", required=True),
+            "dry_run": WorkflowInputSpec(description="Dry run flag (true/false)", default="true"),
+            "timestamp": WorkflowInputSpec(description="Release timestamp"),
+        },
+    ),
     "aware-release": WorkflowSpec(
         slug="aware-release",
         repo=DEFAULT_REPO,

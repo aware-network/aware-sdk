@@ -377,6 +377,7 @@ def test_cli_pipeline_list() -> None:
     assert {
         "tests-release",
         "file-system-release",
+        "environment-release",
         "sdk-release",
         "cli-bundle",
         "cli-rules",
@@ -514,6 +515,62 @@ def test_pipeline_cli_release_e2e(monkeypatch: pytest.MonkeyPatch, tmp_path: Pat
     assert result.receipts["publish"]["status"] == "ok"
     assert result.artifacts["wheels"] == ["dist/built.whl"]
 
+
+def test_environment_release_pipeline(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    import types
+    from aware_release.workflows import WorkflowDispatchResult
+    import aware_release_pipeline.pipelines as pipelines_mod
+
+    build_calls: list[dict[str, object]] = []
+    test_calls: list[dict[str, object]] = []
+    workflow_calls: list[dict[str, object]] = []
+
+    def fake_build(**kwargs):
+        build_calls.append(kwargs)
+        return ["dist/aware_environment-0.1.1-py3-none-any.whl"], {"status": "ok", "stdout": "", "stderr": ""}
+
+    def fake_tests(command, cwd, env=None):
+        test_calls.append({"command": command, "cwd": cwd, "env": env})
+        return {"status": "ok", "stdout": "tests", "stderr": ""}
+
+    def fake_get_workflow(slug: str):
+        return types.SimpleNamespace(slug=slug)
+
+    def fake_trigger(spec, inputs, dry_run):
+        workflow_calls.append({"spec": spec, "inputs": dict(inputs), "dry_run": dry_run})
+        return WorkflowDispatchResult(
+            status="dispatched",
+            repo="repo",
+            workflow="environment-release.yml",
+            ref="main",
+            inputs=dict(inputs),
+            dry_run=dry_run,
+            response_status=204,
+            response_headers={},
+        )
+
+    monkeypatch.setattr(pipelines_mod, "_run_uv_build", fake_build)
+    monkeypatch.setattr(pipelines_mod, "_run_release_tests", fake_tests)
+    monkeypatch.setattr(pipelines_mod, "get_workflow", fake_get_workflow)
+    monkeypatch.setattr(pipelines_mod, "trigger_workflow", fake_trigger)
+    monkeypatch.setattr(pipelines_mod, "read_version", lambda cfg: "0.1.0")
+    monkeypatch.setattr(pipelines_mod, "bump_version", lambda version, bump: "0.1.1")
+    monkeypatch.setattr(pipelines_mod, "write_version", lambda cfg, version: None)
+    monkeypatch.setattr(pipelines_mod, "update_changelog", lambda cfg, version, ts, summary: "entry")
+
+    context = pipelines_mod.PipelineContext(
+        workspace_root=tmp_path,
+        inputs={},
+        raw_inputs={}
+    )
+
+    result = pipelines_mod._pipeline_environment_release(context)
+
+    assert result.status == "ok"
+    assert build_calls and test_calls and workflow_calls
+    assert result.receipts["build"]["status"] == "ok"
+    assert result.receipts["tests"]["status"] == "ok"
+    assert result.receipts["workflow"]["status"] in {"ok", "skipped"}
 
 def test_cli_terminal_refresh(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
     from aware_release_pipeline.models import ProviderRefreshResult
