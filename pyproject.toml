@@ -26,6 +26,8 @@ keywords = ["aware", "sdk", "automation", "release"]
 dependencies = [
   "aware-release>=0.1.2",
   "aware-test-runner>=0.2.0",
+  "aware-terminal>=0.3.3",
+   "aware-terminal-providers>=0.1.1",
   "aware-file-system>=0.1.1",
 ]
 
@@ -35,10 +37,6 @@ test = [
   "pytest>=8.4.2",
   "pytest-asyncio>=0.23.7",
   "pytest-mock>=3.12",
-]
-terminal = [
-  "aware-terminal>=0.3.3",
-  "aware-terminal-providers>=0.1.1",
 ]
 
 [project.urls]

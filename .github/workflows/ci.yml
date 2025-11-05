@@ -29,4 +29,4 @@ jobs:
         run: |
           uv run --project tools/test-runner \
             --with .[test] \
-            aware-tests --manifest oss --stable --no-warnings
+            aware-tests --manifest oss --stable --no-warnings --xvs -vv --xvs --maxfail=1
