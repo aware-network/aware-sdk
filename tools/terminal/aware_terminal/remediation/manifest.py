@@ -38,7 +38,20 @@ class ProviderManifestRefresher:
             self.providers_root = providers_root
         else:
             self.providers_root = provider_manifests_root() if manifests_available() else None
-        self.script_path = script_path if script_path is not None else provider_update_script()
+        resolved_script = script_path if script_path is not None else provider_update_script()
+        if resolved_script is None and self.providers_root is not None:
+            try:
+                candidate = (
+                    self.providers_root.resolve().parents[4]
+                    / "tools"
+                    / "terminal"
+                    / "_ci_update_provider_versions.py"
+                )
+            except IndexError:
+                candidate = None
+            if candidate and candidate.exists():
+                resolved_script = candidate
+        self.script_path = resolved_script
 
     def ensure_fresh(
         self,
@@ -84,7 +97,7 @@ class ProviderManifestRefresher:
                 timestamp=datetime.now(timezone.utc) - age,
             )
 
-        if not allow_refresh or self.script_path is None:
+        if not allow_refresh:
             return ProviderManifestStatus(
                 status="stale",
                 message="Provider manifests older than threshold; skipping auto refresh.",
@@ -93,7 +106,8 @@ class ProviderManifestRefresher:
                 timestamp=datetime.now(timezone.utc) - age,
             )
 
-        if self._refresh():
+        refreshed = self._refresh()
+        if refreshed:
             new_age = self._manifest_age()
             return ProviderManifestStatus(
                 status="refreshed",
@@ -101,6 +115,15 @@ class ProviderManifestRefresher:
                 age=new_age,
                 refreshed=True,
                 timestamp=datetime.now(timezone.utc),
+            )
+
+        if self.script_path is None:
+            return ProviderManifestStatus(
+                status="stale",
+                message="Provider manifest refresh script unavailable; leaving bundled data in place.",
+                age=age,
+                refreshed=False,
+                timestamp=datetime.now(timezone.utc) - age,
             )
 
         return ProviderManifestStatus(

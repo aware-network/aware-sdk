@@ -11,7 +11,7 @@
       "tests_dir": "grammar/grammar/tests",
       "name": {
         "strategy": "template",
-        "template": "{name}-grammar"
+        "template": "{name_slug}-grammar"
       },
       "description": "{name_title} grammar tests"
     },
@@ -23,8 +23,8 @@
       "max_depth": 1,
       "tests_dir": "tests",
       "name": {
-        "strategy": "path_join",
-        "delimiter": "_"
+        "strategy": "template",
+        "template": "{name_slug}"
       },
       "description": "{name_title} domain tests"
     },
@@ -38,8 +38,9 @@
       "include_root": true,
       "metadata_field": "project.name",
       "name": {
-        "strategy": "metadata",
-        "fallback": "path"
+        "strategy": "template",
+        "template": "{name_slug}",
+        "fallback": "metadata"
       },
       "description": "{display_title} environment tests"
     }

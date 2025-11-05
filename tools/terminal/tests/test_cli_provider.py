@@ -6,8 +6,15 @@ from aware_terminal.integrations.bindings import BindingStore
 
 
 class StubCliProvider(CliControlDataProvider):
-    def __init__(self) -> None:
-        super().__init__(runtime_root=Path("docs/runtime/process"))
+    def __init__(self, runtime_root: Path) -> None:
+        super().__init__(runtime_root=runtime_root)
+        base = self.repo_root / "docs" / "runtime" / "process"
+        control_thread = base / "desktop" / "threads" / "thread-control"
+        other_thread = base / "agent" / "threads" / "thread-other"
+
+        self._thread_path = control_thread
+        self._other_path = other_thread
+
         self._responses = {
             "thread-list": [
                 {
@@ -17,7 +24,7 @@ class StubCliProvider(CliControlDataProvider):
                     "thread_slug": "thread-control",
                     "title": "Control",
                     "is_main": True,
-                    "path": str(Path.cwd() / "docs/runtime/process/desktop/threads/thread-control"),
+                    "path": str(control_thread),
                 },
                 {
                     "id": "agent/thread-other",
@@ -25,13 +32,13 @@ class StubCliProvider(CliControlDataProvider):
                     "thread_slug": "thread-other",
                     "title": "Other",
                     "is_main": False,
-                    "path": str(Path.cwd() / "docs/runtime/process/agent/threads/thread-other"),
+                    "path": str(other_thread),
                 },
             ],
             "status:desktop/thread-control": {
                 "id": "desktop/thread-control",
                 "title": "Control",
-                "path": str(Path.cwd() / "docs/runtime/process/desktop/threads/thread-control"),
+                "path": str(control_thread),
                 "branches": [
                     {
                         "pane_kind": "analysis",
@@ -45,7 +52,7 @@ class StubCliProvider(CliControlDataProvider):
             "status:agent/thread-other": {
                 "id": "agent/thread-other",
                 "title": "Other",
-                "path": str(Path.cwd() / "docs/runtime/process/agent/threads/thread-other"),
+                "path": str(other_thread),
                 "branches": [],
             },
         }
@@ -61,7 +68,19 @@ class StubCliProvider(CliControlDataProvider):
 
 
 def test_cli_provider_status_and_events(tmp_path: Path) -> None:
-    provider = StubCliProvider()
+    runtime_root = tmp_path / "docs" / "runtime" / "process"
+    control_dir = runtime_root / "desktop" / "threads" / "thread-control"
+    other_dir = runtime_root / "agent" / "threads" / "thread-other"
+    control_branch_dir = control_dir / "branches"
+    control_doc = control_dir / "analysis" / "doc.md"
+
+    control_doc.parent.mkdir(parents=True, exist_ok=True)
+    control_branch_dir.mkdir(parents=True, exist_ok=True)
+    other_dir.mkdir(parents=True, exist_ok=True)
+    control_doc.write_text("# Control Analysis\n", encoding="utf-8")
+    (control_branch_dir / "analysis.json").write_text("{}", encoding="utf-8")
+
+    provider = StubCliProvider(runtime_root=runtime_root)
     view_model = ControlCenterViewModel(provider, binding_store=BindingStore(base=tmp_path))
 
     threads = view_model.refresh_threads(force=True)

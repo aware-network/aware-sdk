@@ -5,6 +5,10 @@ All notable changes to `aware-terminal` are documented here. Dates use UTC.
 ## [0.3.2] - 2025-11-05
 - Added README and LICENSE metadata to the published package and ensured the wheel includes CHANGELOG/README/LIC files for PyPI.
 
+## [0.3.3] - 2025-11-05
+- Made `ProviderManifestRefresher` resilient in packaged environments by falling back to the bundled CI update script when no refresh script is configured.
+- Updated control-center CLI tests to synthesise runtime docs in temporary directories, decoupling test runs from repository `docs/runtime` assets.
+
 ## [0.3.1] - 2025-11-04
 - Added a `[test]` extra with pytest, pytest-asyncio, and pytest-mock so maintainers can run the terminal suites after installing the package.
 

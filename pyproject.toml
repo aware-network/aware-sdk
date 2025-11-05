@@ -37,7 +37,7 @@ test = [
   "pytest-mock>=3.12",
 ]
 terminal = [
-  "aware-terminal>=0.3.2",
+  "aware-terminal>=0.3.3",
   "aware-terminal-providers>=0.1.1",
 ]
 

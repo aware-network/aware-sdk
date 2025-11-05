@@ -1,6 +1,6 @@
 [project]
 name = "aware-terminal"
-version = "0.3.2"
+version = "0.3.3"
 description = "AWARE Terminal Manager: Persistent tmux + GNOME workspace automation"
 authors = [
   { name = "AWARE Team" },

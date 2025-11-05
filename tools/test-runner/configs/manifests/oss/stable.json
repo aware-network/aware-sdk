@@ -3,6 +3,8 @@
     "release",
     "release-pipeline",
     "test-runner",
-    "file_system"
+    "file_system",
+    "terminal",
+    "terminal_providers"
   ]
 }
