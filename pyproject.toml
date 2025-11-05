@@ -27,7 +27,7 @@ dependencies = [
   "aware-release>=0.1.2",
   "aware-test-runner>=0.2.0",
   "aware-terminal>=0.3.3",
-   "aware-terminal-providers>=0.1.1",
+  "aware-terminal-providers>=0.1.1",
   "aware-file-system>=0.1.1",
 ]
 

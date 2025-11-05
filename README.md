@@ -1,9 +1,10 @@
 # aware-sdk
 
-`aware-sdk` is the convenience bundle for installing the Aware release toolchain.
-It pulls in the published `aware-release`, `aware-test-runner`, and
-`aware-file-system` packages so you can bootstrap an environment with a single
-`pip install`.
+`aware-sdk` is the baseline distribution for the Aware stack. It packages the
+CLI-first infrastructure that Release, Terminal, and future environment
+features share: automated publishing, manifest-driven testing, filesystem
+indexing, and the terminal runtime. Install it to recreate the same tooling the
+Aware release pipeline and Studio builds consume.
 
 ## Installation
 
@@ -20,14 +21,7 @@ in pytest and async fixtures used by the bundled suites:
 pip install "aware-sdk[test]"
 ```
 
-For Terminal integrations install the optional `terminal` extra, which bundles
-the daemon and provider registry published by the release pipeline:
-
-```bash
-pip install "aware-sdk[terminal]"
-```
-
-This command installs the following packages (with compatible versions):
+The SDK installs the following packages (with compatible versions):
 
 - [`aware-release`](https://pypi.org/project/aware-release/) — bundle builder,
   manifest tooling, and workflow helpers.
@@ -40,7 +34,7 @@ This command installs the following packages (with compatible versions):
 - [`aware-terminal-providers`](https://pypi.org/project/aware-terminal-providers/)
   — provider registry and workflows for Terminal automation.
 
-## Test manifests
+## Running the OSS test suites
 
 `aware-test-runner` expects callers to provide a manifest explicitly. The SDK
 bundles the canonical OSS definitions under
@@ -54,7 +48,7 @@ import importlib.resources as res
 print(res.files('aware_sdk.configs.manifests.oss') / 'manifest.json')
 PY
 )
-aware-tests --manifest-file "$MANIFEST" --stable
+aware-tests --manifest-file "$MANIFEST" --stable --no-warnings
 ```
 
 Internal overlays live in the monorepo under `configs/manifests/` and can be
@@ -68,10 +62,11 @@ versions of the bundled components:
 ```bash
 $ aware-sdk
 {
-  "aware_sdk": "0.0.0",
+  "aware_sdk": "0.6.1",
   "aware_release": "0.1.2",
   "aware_test_runner": "0.2.0",
-  "aware_file_system": "0.1.0"
+  "aware_file_system": "0.1.1",
+  "aware_terminal": "0.3.3"
 }
 ```
 
@@ -82,15 +77,15 @@ synchronised with the recommended versions.
 
 ## Usage
 
-Once `aware-sdk` is installed you can immediately invoke the underlying
-packages. Common examples:
+Once `aware-sdk` is installed you can immediately invoke the bundled tooling.
+Examples:
 
 ```bash
 # Build a release bundle
 aware-release bundle --help
 
 # Run the curated OSS test suites
-aware-tests --manifest oss --stable --no-warnings
+aware-tests --manifest-file "$MANIFEST" --stable --no-warnings
 
 # Start the filesystem watcher
 python -m aware_file_system.examples.watch_docs
@@ -100,9 +95,17 @@ Refer to the individual package documentation for detailed usage.
 
 ## Versioning & changelog
 
-`aware-sdk` itself contains only the helper CLI and metadata. All functional
-updates happen in the underlying packages. Each release of the SDK documents
-which versions of the bundled packages it expects.
+`aware-sdk` itself contains only the helper CLI, metadata, and curated
+configuration (manifests, panel definitions, docs). All functional updates live
+in the underlying packages. Each SDK release documents the expected versions so
+clean-room installs stay in sync with the public pipeline.
+
+## What comes next
+
+The current SDK focuses on infrastructure. Upcoming milestones add the
+environment/kernel objects (rules, ACL, CLI object graph) so third parties can
+layer their own environments on top of the same CLI-first foundation. Follow
+the changelog for progress.
 
 ## License
 
