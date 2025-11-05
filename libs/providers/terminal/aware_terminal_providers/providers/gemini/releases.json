@@ -1,0 +1,38 @@
+{
+  "provider": "gemini",
+  "channels": {
+    "latest": {
+      "version": "0.11.3",
+      "npm_tag": "latest",
+      "updated_at": "2025-11-04T22:56:43.609320Z",
+      "release_notes": {
+        "summary": "Full Changelog**: https://github.com/google-gemini/gemini-cli/compare/v0.11.2...v0.11.3",
+        "url": "https://github.com/google-gemini/gemini-cli/releases/tag/v0.11.3",
+        "source": "github_release",
+        "fetched_at": "2025-11-04T22:56:43.609320Z"
+      }
+    },
+    "preview": {
+      "version": "0.12.0-preview.11",
+      "npm_tag": "preview",
+      "updated_at": "2025-11-04T22:56:43.609320Z",
+      "release_notes": {
+        "summary": "fix(patch): cherry-pick fd2cbac to release/v0.12.0-preview.9-pr-12399 [CONFLICTS] by @gemini-cli-robot in https://github.com/google-gemini/gemini-cli/pull/12488; fix: cherry-pick commits for release\u2026",
+        "url": "https://github.com/google-gemini/gemini-cli/releases/tag/v0.12.0-preview.11",
+        "source": "github_release",
+        "fetched_at": "2025-11-04T22:56:43.609320Z"
+      }
+    },
+    "nightly": {
+      "version": "0.13.0-nightly.20251103.9187f6f6",
+      "npm_tag": "nightly",
+      "updated_at": "2025-11-04T22:56:43.609320Z",
+      "release_notes": {
+        "summary": "fix(core): combine .gitignore and .geminiignore logic for correct precedence by @EricRahm in https://github.com/google-gemini/gemini-cli/pull/11587; Add DarkGray to the ColorTheme. by @jacob314 in ht\u2026",
+        "url": "https://github.com/google-gemini/gemini-cli/releases/tag/v0.13.0-nightly.20251103.9187f6f6",
+        "source": "github_release",
+        "fetched_at": "2025-11-04T22:56:43.609320Z"
+      }
+    }
+  }
+}

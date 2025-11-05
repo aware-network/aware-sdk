@@ -51,6 +51,7 @@
         },
         "comms",
         "environment",
+        "environments",
         "release",
         "terminal",
         "terminal_providers",

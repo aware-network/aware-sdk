@@ -1,0 +1,16 @@
+{
+  "provider": "claude-code",
+  "channels": {
+    "latest": {
+      "version": "2.0.32",
+      "npm_tag": "latest",
+      "updated_at": "2025-11-04T22:56:42.017954Z",
+      "release_notes": {
+        "summary": "Un-deprecate output styles based on community feedback; Added `companyAnnouncements` setting for displaying announcements on startup; Fixed hook progress messages not updating correctly during PostTo\u2026",
+        "url": "https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md",
+        "source": "github_changelog",
+        "fetched_at": "2025-11-04T22:56:42.017954Z"
+      }
+    }
+  }
+}

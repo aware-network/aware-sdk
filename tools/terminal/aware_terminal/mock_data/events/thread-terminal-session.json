@@ -1,0 +1,17 @@
+[
+  {
+    "id": "evt-terminal-session-design",
+    "thread_id": "thread-terminal-session",
+    "timestamp": "2025-10-10T20:40:00Z",
+    "projection": "ProjectTaskOPG",
+    "channel": "analysis",
+    "label": "Analysis",
+    "change_type": "created",
+    "doc_path": "docs/projects/aware-desktop-integration/tasks/terminal-session-management/analysis/2025-10-10T20-40-00Z-thread-centric-resume-ux.md",
+    "metadata": {
+      "project": "aware-desktop-integration",
+      "task": "terminal-session-management",
+      "title": "Thread-Centric Resume UX"
+    }
+  }
+]

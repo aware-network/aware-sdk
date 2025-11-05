@@ -33,6 +33,8 @@ SDK_EXPORT_ENTRIES = [
     ("tools/release", "tools/release"),
     ("tools/release-pipeline", "tools/release-pipeline"),
     ("tools/test-runner", "tools/test-runner"),
+    ("tools/terminal", "tools/terminal"),
+    ("libs/providers/terminal", "libs/providers/terminal"),
 ]
 
 
@@ -1126,6 +1128,104 @@ def _pipeline_sdk_release(context: PipelineContext) -> PipelineResult:
     )
 
 
+def _pipeline_terminal_release(context: PipelineContext) -> PipelineResult:
+    workspace_root = context.workspace_root
+    timestamp_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    packages = [
+        {
+            "name": "aware-terminal",
+            "project": workspace_root / "tools" / "terminal",
+            "out_dir": workspace_root / "build" / "public" / "aware-terminal" / "dist",
+            "test_command": [
+                "uv",
+                "run",
+                "--project",
+                "tools/terminal",
+                "pytest",
+                "-q",
+            ],
+        },
+        {
+            "name": "aware-terminal-providers",
+            "project": workspace_root / "libs" / "providers" / "terminal",
+            "out_dir": workspace_root / "build" / "public" / "aware-terminal-providers" / "dist",
+            "test_command": [
+                "uv",
+                "run",
+                "--project",
+                "libs/providers/terminal",
+                "pytest",
+                "-q",
+            ],
+        },
+    ]
+
+    if _to_bool(context.get("include-control-center")):
+        packages.append(
+            {
+                "name": "aware-terminal-control-center",
+                "project": workspace_root / "tools" / "terminal-control-center",
+                "out_dir": workspace_root / "build" / "public" / "aware-terminal-control-center" / "dist",
+                "test_command": [
+                    "uv",
+                    "run",
+                    "--project",
+                    "tools/terminal-control-center",
+                    "pytest",
+                    "-q",
+                ],
+            }
+        )
+
+    artifacts: Dict[str, object] = {"wheels": {}}
+    receipts: Dict[str, object] = {}
+    logs: List[str] = []
+
+    skip_tests = _to_bool(context.get("skip-tests"))
+
+    for pkg in packages:
+        project_rel = pkg["project"].relative_to(workspace_root)
+        out_rel = pkg["out_dir"].relative_to(workspace_root)
+        built_wheels, build_receipt = _run_uv_build(
+            workspace_root=workspace_root,
+            project=str(project_rel),
+            out_dir=str(out_rel),
+            extra_args=[],
+        )
+        artifacts["wheels"][pkg["name"]] = built_wheels
+        receipts[pkg["name"]] = {"build": build_receipt}
+        if build_receipt.get("stdout"):
+            logs.append(build_receipt["stdout"])
+        if build_receipt.get("stderr"):
+            logs.append(build_receipt["stderr"])
+
+        if skip_tests:
+            receipts[pkg["name"]]["tests"] = {
+                "status": "skipped",
+                "reason": "skip-tests flag enabled",
+                "timestamp": timestamp_iso,
+            }
+            continue
+
+        test_receipt = _run_release_tests(
+            command=pkg["test_command"],
+            cwd=pkg["project"],
+        )
+        receipts[pkg["name"]]["tests"] = test_receipt
+        if test_receipt.get("stdout"):
+            logs.append(test_receipt["stdout"])
+        if test_receipt.get("stderr"):
+            logs.append(test_receipt["stderr"])
+
+    return PipelineResult(
+        status="ok",
+        artifacts=artifacts,
+        receipts=receipts,
+        logs=[log for log in logs if log],
+    )
+
+
 def _register_builtin_pipelines() -> None:
     register_pipeline(
         PipelineSpec(
@@ -1181,6 +1281,20 @@ def _register_builtin_pipelines() -> None:
             },
             artifacts=["wheels"],
             receipts=["version", "build", "tests", "workflow"],
+        )
+    )
+
+    register_pipeline(
+        PipelineSpec(
+            slug="terminal-release",
+            description="Build and test aware-terminal packages.",
+            runner=_pipeline_terminal_release,
+            inputs={
+                "skip-tests": PipelineInputSpec(description="Skip tests execution (true/false)", default="false"),
+                "include-control-center": PipelineInputSpec(description="Also build/test aware-terminal-control-center", default="false"),
+            },
+            artifacts=["wheels"],
+            receipts=["aware-terminal", "aware-terminal-providers", "aware-terminal-control-center"],
         )
     )
 

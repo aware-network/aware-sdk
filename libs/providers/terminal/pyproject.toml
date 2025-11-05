@@ -1,0 +1,54 @@
+[project]
+name = "aware-terminal-providers"
+version = "0.1.1"
+description = "Provider registry and automation helpers for aware-terminal."
+authors = [
+  { name = "Luis Lechuga", email = "luis@aware-agent.com" },
+]
+requires-python = ">=3.12"
+dependencies = [
+  "pydantic>=2.6.0,<3.0.0",
+]
+readme = "README.md"
+license = { file = "LICENSE" }
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.2.0,<9.0.0",
+  "flake8>=7.0.0,<8.0.0",
+  "black>=24.8.0,<25.0.0",
+  "isort>=5.13.0,<6.0.0",
+]
+
+test = [
+  "pytest>=8.2.0,<9.0.0",
+  "pytest-mock>=3.12.0,<4.0.0",
+]
+
+[tool.black]
+line-length = 120
+target-version = ["py312"]
+
+[tool.isort]
+profile = "black"
+line_length = 120
+known_local_folder = ["aware_terminal_providers"]
+
+[tool.flake8]
+max-line-length = 120
+extend-ignore = "E266"
+
+[tool.mypy]
+ignore_missing_imports = true
+
+[build-system]
+requires = ["hatchling>=1.27.0"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["aware_terminal_providers"]
+include = [
+  "README.md",
+  "CHANGELOG.md",
+  "LICENSE",
+]

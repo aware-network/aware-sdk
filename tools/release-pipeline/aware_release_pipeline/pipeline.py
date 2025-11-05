@@ -294,29 +294,8 @@ def validate_terminal_providers(
 
     import json as _json
 
-    for manifest_path_str in manifest_paths:
-        manifest_path = Path(manifest_path_str)
-        try:
-            data = _json.loads(manifest_path.read_text(encoding="utf-8"))
-        except Exception as exc:  # pragma: no cover - reported via validation
-            issues.append(
-                ProviderValidationIssue(
-                    manifest=str(manifest_path),
-                    message=f"Failed to parse manifest: {exc}",
-                )
-            )
-            continue
-
-        if not isinstance(data, dict) or "versions" not in data:
-            issues.append(
-                ProviderValidationIssue(
-                    manifest=str(manifest_path),
-                    message="Manifest missing 'versions' root key.",
-                )
-            )
-            continue
-
-        versions = data.get("versions", [])
+    def _validate_versions_schema(manifest_path: Path, payload: dict, issues: List[ProviderValidationIssue]) -> None:
+        versions = payload.get("versions", [])
         if not isinstance(versions, list):
             issues.append(
                 ProviderValidationIssue(
@@ -324,7 +303,7 @@ def validate_terminal_providers(
                     message="'versions' must be a list.",
                 )
             )
-            continue
+            return
 
         seen_tags: Dict[str, str] = {}
         for entry in versions:
@@ -355,6 +334,94 @@ def validate_terminal_providers(
                 )
             else:
                 seen_tags[tag] = version
+
+    def _validate_channels_schema(manifest_path: Path, payload: dict, issues: List[ProviderValidationIssue]) -> None:
+        channels = payload.get("channels")
+        if not isinstance(channels, dict) or not channels:
+            issues.append(
+                ProviderValidationIssue(
+                    manifest=str(manifest_path),
+                    message="Manifest 'channels' must be a non-empty object.",
+                )
+            )
+            return
+
+        for channel_name, channel_data in channels.items():
+            if not isinstance(channel_data, dict):
+                issues.append(
+                    ProviderValidationIssue(
+                        manifest=str(manifest_path),
+                        message=f"Channel '{channel_name}' entry must be an object.",
+                    )
+                )
+                continue
+            version = channel_data.get("version")
+            if not isinstance(version, str) or not version.strip():
+                issues.append(
+                    ProviderValidationIssue(
+                        manifest=str(manifest_path),
+                        message=f"Channel '{channel_name}' missing string 'version'.",
+                    )
+                )
+            npm_tag = channel_data.get("npm_tag")
+            if npm_tag is not None and not isinstance(npm_tag, str):
+                issues.append(
+                    ProviderValidationIssue(
+                        manifest=str(manifest_path),
+                        message=f"Channel '{channel_name}' has non-string 'npm_tag'.",
+                    )
+                )
+            release_notes = channel_data.get("release_notes")
+            if release_notes is not None and not isinstance(release_notes, dict):
+                issues.append(
+                    ProviderValidationIssue(
+                        manifest=str(manifest_path),
+                        message=f"Channel '{channel_name}' has invalid 'release_notes' type (expected object).",
+                    )
+                )
+            if isinstance(release_notes, dict):
+                summary = release_notes.get("summary")
+                if summary is not None and not isinstance(summary, str):
+                    issues.append(
+                        ProviderValidationIssue(
+                            manifest=str(manifest_path),
+                            message=f"Channel '{channel_name}' release notes 'summary' must be a string if present.",
+                        )
+                    )
+
+    for manifest_path_str in manifest_paths:
+        manifest_path = Path(manifest_path_str)
+        try:
+            data = _json.loads(manifest_path.read_text(encoding="utf-8"))
+        except Exception as exc:  # pragma: no cover - reported via validation
+            issues.append(
+                ProviderValidationIssue(
+                    manifest=str(manifest_path),
+                    message=f"Failed to parse manifest: {exc}",
+                )
+            )
+            continue
+
+        if not isinstance(data, dict):
+            issues.append(
+                ProviderValidationIssue(
+                    manifest=str(manifest_path),
+                    message="Manifest must be a JSON object.",
+                )
+            )
+            continue
+
+        if "versions" in data:
+            _validate_versions_schema(manifest_path, data, issues)
+        elif "channels" in data:
+            _validate_channels_schema(manifest_path, data, issues)
+        else:
+            issues.append(
+                ProviderValidationIssue(
+                    manifest=str(manifest_path),
+                    message="Manifest missing supported schema ('versions' or 'channels').",
+                )
+            )
 
     return ProviderValidationResult(
         manifest_paths=manifest_paths,
@@ -399,7 +466,7 @@ def _parse_overrides(values: Optional[Sequence[str]]) -> Dict[str, object]:
 
 
 def _discover_rule_ids() -> List[str]:
-    from aware_cli.objects.rule.meta import list_rules
+    from aware_cli.registry.rules import list_rules
 
     return [rule.id for rule in list_rules()]
 

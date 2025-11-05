@@ -1,0 +1,16 @@
+{
+  "provider": "codex",
+  "channels": {
+    "latest": {
+      "version": "0.55.0",
+      "npm_tag": "latest",
+      "updated_at": "2025-11-04T22:56:40.134007Z",
+      "release_notes": {
+        "summary": "#6222 Revert \"fix: pin musl 1.2.5 for DNS fixes\"; #6208 ignore deltas in `codex_delegate`",
+        "url": "https://github.com/openai/codex/releases/tag/rust-v0.55.0",
+        "source": "github_release",
+        "fetched_at": "2025-11-04T22:56:40.134007Z"
+      }
+    }
+  }
+}

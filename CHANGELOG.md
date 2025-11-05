@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.6.0] - 2025-11-05
+- Added `[terminal]` extra bundling `aware-terminal` and `aware-terminal-providers` for Studio integration workflows.
+
 ## [0.5.1] - 2025-11-04
 - Added `[test]` extra that bundles pytest tooling for monorepo suites.
 - Documented optional test install and wired CI to consume the meta package.

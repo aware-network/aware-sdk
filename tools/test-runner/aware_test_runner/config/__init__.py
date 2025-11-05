@@ -4,15 +4,47 @@ from __future__ import annotations
 
 import json
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from importlib import resources
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Any, Dict, Iterable, List, Literal, Optional, Sequence, Tuple
 
 DEFAULT_MANIFEST_ID = "internal"
 MANIFEST_ENV = "AWARE_TEST_RUNNER_MANIFEST"
 MANIFEST_FILE_ENV = "AWARE_TEST_RUNNER_MANIFEST_FILE"
 MANIFEST_DIRS_ENV = "AWARE_TEST_RUNNER_MANIFEST_DIRS"
+
+
+@dataclass
+class DiscoveryNameTemplate:
+    """Formatting instructions for suite names derived from discovery rules."""
+
+    strategy: Literal["path_join", "template", "metadata"] = "path_join"
+    template: Optional[str] = None
+    reverse: bool = False
+    delimiter: str = "_"
+    fallback: Optional[str] = None
+
+
+@dataclass
+class DiscoveryRule:
+    """Definition for filesystem-driven suite discovery."""
+
+    id: str
+    category: str
+    type: Literal["package"] = "package"
+    root: str = "."
+    include: List[str] = field(default_factory=list)
+    exclude: List[str] = field(default_factory=list)
+    max_depth: Optional[int] = None
+    tests_dir: str = "tests"
+    require_metadata: bool = False
+    metadata_field: Optional[str] = None
+    include_root: bool = False
+    name: DiscoveryNameTemplate = field(default_factory=DiscoveryNameTemplate)
+    description: Optional[str] = None
+    enabled: bool = True
+    category_aliases: List[str] = field(default_factory=list)
 
 
 @dataclass
@@ -22,6 +54,7 @@ class ManifestData:
     identifier: str
     stable_entries: List[object]
     runtime_entries: List[Dict]
+    discovery_rules: List[DiscoveryRule]
 
 
 def load_manifest(*, manifest_id: Optional[str] = None, manifest_file: Optional[str] = None) -> ManifestData:
@@ -78,7 +111,7 @@ def _resolve_manifest_by_id(manifest_id: str, *, visited: set[str]) -> ManifestD
 
 def _normalize_manifest(manifest_id: str, payload: Dict, *, visited: set[str]) -> ManifestData:
     extends = payload.get("extends")
-    base = ManifestData(manifest_id, [], [])
+    base = ManifestData(manifest_id, [], [], _default_discovery_rules())
     if extends:
         if isinstance(extends, str):
             if extends.endswith(".json") or "/" in extends:
@@ -92,8 +125,11 @@ def _normalize_manifest(manifest_id: str, payload: Dict, *, visited: set[str]) -
 
     stable_entries = _merge_entries(base.stable_entries, _extract_entries(payload, "stable"), _stable_entry_key)
     runtime_entries = _merge_entries(base.runtime_entries, _extract_entries(payload, "runtime"), _runtime_entry_key)
+    discovery_rules = _merge_discovery_rules(base.discovery_rules, _extract_discovery_rules(payload))
+    if not discovery_rules:
+        discovery_rules = _default_discovery_rules()
 
-    return ManifestData(manifest_id, stable_entries, runtime_entries)
+    return ManifestData(manifest_id, stable_entries, runtime_entries, discovery_rules)
 
 
 def _iter_manifest_directories() -> Iterable[Path]:
@@ -187,6 +223,173 @@ def _extract_entries(payload: Dict, key: str) -> List:
     return []
 
 
+def _extract_discovery_rules(payload: Dict) -> List[DiscoveryRule]:
+    rules_value = payload.get("discovery")
+    if not isinstance(rules_value, list):
+        return []
+
+    parsed: List[DiscoveryRule] = []
+    for entry in rules_value:
+        if not isinstance(entry, dict):
+            raise ValueError(f"Discovery rule entries must be objects, got {type(entry).__name__!r}")
+        parsed.append(_parse_discovery_rule(entry))
+    return parsed
+
+
+def _parse_discovery_rule(data: Dict[str, Any]) -> DiscoveryRule:
+    if "id" not in data or "category" not in data:
+        raise ValueError("Discovery rules must include 'id' and 'category' fields.")
+
+    rule_id = str(data["id"])
+    category = str(data["category"])
+    rule_type = str(data.get("type", "package"))
+    if rule_type not in {"package"}:
+        raise ValueError(f"Unsupported discovery rule type '{rule_type}' for rule '{rule_id}'.")
+
+    root = str(data.get("root", "."))
+    include = [str(item) for item in data.get("include", []) if isinstance(item, str)]
+    exclude = [str(item) for item in data.get("exclude", []) if isinstance(item, str)]
+
+    max_depth_value = data.get("max_depth")
+    max_depth: Optional[int]
+    if max_depth_value is None:
+        max_depth = None
+    else:
+        if isinstance(max_depth_value, int):
+            max_depth = max_depth_value
+        elif isinstance(max_depth_value, (float, str)) and str(max_depth_value).isdigit():
+            max_depth = int(max_depth_value)
+        else:
+            raise ValueError(f"Discovery rule '{rule_id}' has invalid max_depth value: {max_depth_value!r}")
+
+    tests_dir = str(data.get("tests_dir", "tests"))
+    require_metadata = bool(data.get("require_metadata", False))
+    metadata_field = data.get("metadata_field")
+    if metadata_field is not None:
+        metadata_field = str(metadata_field)
+    include_root = bool(data.get("include_root", False))
+    enabled = bool(data.get("enabled", True))
+
+    name_block = data.get("name", {}) or {}
+    if not isinstance(name_block, dict):
+        raise ValueError(f"Discovery rule '{rule_id}' has invalid 'name' configuration.")
+    strategy = str(name_block.get("strategy", "path_join"))
+    if strategy not in {"path_join", "template", "metadata"}:
+        raise ValueError(
+            f"Discovery rule '{rule_id}' has unsupported name strategy '{strategy}'. "
+            "Supported strategies: path_join, template, metadata."
+        )
+    name_template = DiscoveryNameTemplate(
+        strategy=strategy,  # type: ignore[arg-type]
+        template=name_block.get("template"),
+        reverse=bool(name_block.get("reverse", False)),
+        delimiter=str(name_block.get("delimiter", "_")),
+        fallback=name_block.get("fallback"),
+    )
+
+    description = data.get("description")
+    if description is not None:
+        description = str(description)
+
+    category_aliases = [str(item) for item in data.get("category_aliases", []) if isinstance(item, str)]
+
+    return DiscoveryRule(
+        id=rule_id,
+        category=category,
+        type="package",
+        root=root,
+        include=include,
+        exclude=exclude,
+        max_depth=max_depth,
+        tests_dir=tests_dir,
+        require_metadata=require_metadata,
+        metadata_field=metadata_field,
+        include_root=include_root,
+        name=name_template,
+        description=description,
+        enabled=enabled,
+        category_aliases=category_aliases,
+    )
+
+
+def _merge_discovery_rules(base: List[DiscoveryRule], overlay: List[DiscoveryRule]) -> List[DiscoveryRule]:
+    merged: Dict[str, DiscoveryRule] = {rule.id: rule for rule in base}
+    order: List[str] = [rule.id for rule in base]
+
+    for rule in overlay:
+        if not rule.enabled:
+            if rule.id in merged:
+                del merged[rule.id]
+            continue
+        merged[rule.id] = rule
+        if rule.id not in order:
+            order.append(rule.id)
+
+    return [merged[rule_id] for rule_id in order if rule_id in merged]
+
+
+DEFAULT_DISCOVERY_RULES_DATA: List[Dict[str, Any]] = [
+    {
+        "id": "grammar",
+        "category": "grammar",
+        "type": "package",
+        "root": "languages",
+        "max_depth": 1,
+        "tests_dir": "grammar/grammar/tests",
+        "name": {
+            "strategy": "template",
+            "template": "{name}-grammar",
+        },
+        "description": "{name_title} grammar tests",
+    },
+    {
+        "id": "libraries",
+        "category": "lib",
+        "category_aliases": ["libs"],
+        "type": "package",
+        "root": "libs",
+        "max_depth": 2,
+        "tests_dir": "tests",
+        "name": {
+            "strategy": "path_join",
+            "reverse": True,
+            "delimiter": "_",
+        },
+        "description": "{path_title} library tests",
+    },
+    {
+        "id": "domains",
+        "category": "domains",
+        "type": "package",
+        "root": "languages/python/domains",
+        "max_depth": 1,
+        "tests_dir": "tests",
+        "name": {
+            "strategy": "path_join",
+            "delimiter": "_",
+        },
+        "description": "{name_title} domain tests",
+    },
+    {
+        "id": "tools",
+        "category": "tools",
+        "type": "package",
+        "root": "tools",
+        "max_depth": 1,
+        "tests_dir": "tests",
+        "name": {
+            "strategy": "template",
+            "template": "{name_dash}",
+        },
+        "description": "{name} tooling tests",
+    },
+]
+
+
+def _default_discovery_rules() -> List[DiscoveryRule]:
+    return [_parse_discovery_rule(rule_data) for rule_data in DEFAULT_DISCOVERY_RULES_DATA]
+
+
 def _merge_entries(base: List, overlay: List, key_func) -> List:
     merged: Dict[Optional[str], object] = {}
 
@@ -231,7 +434,7 @@ def _runtime_entry_key(entry) -> Optional[str]:
     return None
 
 
-__all__ = ["ManifestData", "load_manifest", "DEFAULT_MANIFEST_ID"]
+__all__ = ["ManifestData", "DiscoveryRule", "DiscoveryNameTemplate", "load_manifest", "DEFAULT_MANIFEST_ID"]
 def _default_manifest_candidates() -> List[str]:
     candidates: List[str] = []
     if DEFAULT_MANIFEST_ID:

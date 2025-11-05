@@ -1,0 +1,20 @@
+[
+  {
+    "id": "thread-control-center",
+    "environment_id": "env-aware-dev",
+    "process_id": "proc-terminal-session-management",
+    "name": "Control Center",
+    "slug": "control-center",
+    "main": true,
+    "branch_title": "Workspace Control"
+  },
+  {
+    "id": "thread-terminal-session",
+    "environment_id": "env-aware-dev",
+    "process_id": "proc-terminal-session-management",
+    "name": "Terminal Session Implementation",
+    "slug": "terminal-session-implementation",
+    "main": false,
+    "branch_title": "Implementation Track"
+  }
+]

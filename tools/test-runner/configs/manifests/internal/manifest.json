@@ -1,3 +1,47 @@
 {
-  "extends": "oss"
+  "id": "internal",
+  "extends": "oss",
+  "discovery": [
+    {
+      "id": "grammar",
+      "category": "grammar",
+      "type": "package",
+      "root": "languages",
+      "max_depth": 1,
+      "tests_dir": "grammar/grammar/tests",
+      "name": {
+        "strategy": "template",
+        "template": "{name}-grammar"
+      },
+      "description": "{name_title} grammar tests"
+    },
+    {
+      "id": "domains",
+      "category": "domains",
+      "type": "package",
+      "root": "languages/python/domains",
+      "max_depth": 1,
+      "tests_dir": "tests",
+      "name": {
+        "strategy": "path_join",
+        "delimiter": "_"
+      },
+      "description": "{name_title} domain tests"
+    },
+    {
+      "id": "environments",
+      "category": "environments",
+      "type": "package",
+      "root": "environments",
+      "max_depth": 1,
+      "tests_dir": "tests",
+      "include_root": true,
+      "metadata_field": "project.name",
+      "name": {
+        "strategy": "metadata",
+        "fallback": "path"
+      },
+      "description": "{display_title} environment tests"
+    }
+  ]
 }

@@ -72,6 +72,28 @@ WORKFLOWS: Dict[str, WorkflowSpec] = {
             "timestamp": WorkflowInputSpec(description="Release timestamp"),
         },
     ),
+    "terminal-release": WorkflowSpec(
+        slug="terminal-release",
+        repo=DEFAULT_REPO,
+        workflow="publish-aware-terminal.yml",
+        description="Publish aware-terminal package (GitHub + PyPI).",
+        inputs={
+            "version": WorkflowInputSpec(description="Version to publish", required=True),
+            "dry_run": WorkflowInputSpec(description="Dry run flag (true/false)", default="true"),
+            "timestamp": WorkflowInputSpec(description="Release timestamp"),
+        },
+    ),
+    "terminal-providers-release": WorkflowSpec(
+        slug="terminal-providers-release",
+        repo=DEFAULT_REPO,
+        workflow="publish-aware-terminal-providers.yml",
+        description="Publish aware-terminal-providers package (GitHub + PyPI).",
+        inputs={
+            "version": WorkflowInputSpec(description="Version to publish", required=True),
+            "dry_run": WorkflowInputSpec(description="Dry run flag (true/false)", default="true"),
+            "timestamp": WorkflowInputSpec(description="Release timestamp"),
+        },
+    ),
     "update-providers": WorkflowSpec(
         slug="update-providers",
         repo=DEFAULT_REPO,

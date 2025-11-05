@@ -1,0 +1,10 @@
+{
+  "thread-control-center": {
+    "workspace_hint": 1,
+    "tmux_session": "aware-control"
+  },
+  "thread-terminal-session": {
+    "workspace_hint": 2,
+    "tmux_session": "aware-terminal"
+  }
+}

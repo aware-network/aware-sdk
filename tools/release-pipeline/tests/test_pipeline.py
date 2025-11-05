@@ -14,6 +14,7 @@ sys.path.insert(0, str(ROOT / "tools" / "release"))
 sys.path.insert(0, str(ROOT / "tools" / "release-pipeline"))
 
 from aware_release_pipeline.pipeline import prepare_release, publish_release
+from aware_release_pipeline.pipelines import PipelineContext
 
 
 def _create_wheel(path: Path, package: str, version: str) -> None:
@@ -301,6 +302,64 @@ def test_cli_sdk_publish(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Non
     assert ("git", "add", "-A") in git_commands
     assert ("git", "commit", "-m", "chore: sync aware-sdk 0.5.1") in git_commands
     assert ("git", "push", "origin", "main") in git_commands
+
+
+def test_terminal_release_pipeline(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    import aware_release_pipeline.pipelines as pipelines_mod
+
+    build_calls: list[dict] = []
+    test_calls: list[dict] = []
+
+    def fake_build(**kwargs):
+        build_calls.append(kwargs)
+        return ["dist/fake.whl"], {"status": "ok"}
+
+    def fake_tests(command, cwd):
+        test_calls.append({"command": command, "cwd": cwd})
+        return {"command": command, "returncode": 0, "stdout": "ok", "stderr": ""}
+
+    monkeypatch.setattr(pipelines_mod, "_run_uv_build", fake_build)
+    monkeypatch.setattr(pipelines_mod, "_run_release_tests", fake_tests)
+
+    context = PipelineContext(workspace_root=tmp_path, inputs={}, raw_inputs={})
+    result = pipelines_mod._pipeline_terminal_release(context)
+
+    assert result.status == "ok"
+    assert len(build_calls) == 2
+    assert len(test_calls) == 2
+    assert "aware-terminal" in result.receipts
+    assert "aware-terminal-providers" in result.receipts
+    assert "aware-terminal-control-center" not in result.receipts
+
+
+def test_terminal_release_with_control_center(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    import aware_release_pipeline.pipelines as pipelines_mod
+
+    build_calls: list[dict] = []
+    test_calls: list[dict] = []
+
+    def fake_build(**kwargs):
+        build_calls.append(kwargs)
+        return ["dist/fake.whl"], {"status": "ok"}
+
+    def fake_tests(command, cwd):
+        test_calls.append({"command": command, "cwd": cwd})
+        return {"command": command, "returncode": 0, "stdout": "ok", "stderr": ""}
+
+    monkeypatch.setattr(pipelines_mod, "_run_uv_build", fake_build)
+    monkeypatch.setattr(pipelines_mod, "_run_release_tests", fake_tests)
+
+    context = PipelineContext(
+        workspace_root=tmp_path,
+        inputs={"include-control-center": True},
+        raw_inputs={},
+    )
+    result = pipelines_mod._pipeline_terminal_release(context)
+
+    assert result.status == "ok"
+    assert len(build_calls) == 3
+    assert len(test_calls) == 3
+    assert "aware-terminal-control-center" in result.receipts
 
 
 def test_cli_pipeline_list() -> None:

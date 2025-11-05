@@ -1,0 +1,32 @@
+[
+  {
+    "id": "evt-control-center-analysis",
+    "thread_id": "thread-control-center",
+    "timestamp": "2025-10-11T00:20:00Z",
+    "projection": "ProjectTaskOPG",
+    "channel": "analysis",
+    "label": "Analysis",
+    "change_type": "modified",
+    "doc_path": "docs/projects/aware-desktop-integration/tasks/terminal-session-management/analysis/2025-10-11T00-20-00Z-control-center-mvp.md",
+    "metadata": {
+      "project": "aware-desktop-integration",
+      "task": "terminal-session-management",
+      "title": "Control Center MVP"
+    }
+  },
+  {
+    "id": "evt-control-center-provider",
+    "thread_id": "thread-control-center",
+    "timestamp": "2025-10-11T00:45:00Z",
+    "projection": "ProjectTaskOPG",
+    "channel": "design",
+    "label": "Design",
+    "change_type": "modified",
+    "doc_path": "docs/projects/aware-desktop-integration/tasks/terminal-session-management/design/2025-10-11T00-45-00Z-control-center-data-provider.md",
+    "metadata": {
+      "project": "aware-desktop-integration",
+      "task": "terminal-session-management",
+      "title": "Control Center Data Provider"
+    }
+  }
+]

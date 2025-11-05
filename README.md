@@ -20,6 +20,13 @@ in pytest and async fixtures used by the bundled suites:
 pip install "aware-sdk[test]"
 ```
 
+For Terminal integrations install the optional `terminal` extra, which bundles
+the daemon and provider registry published by the release pipeline:
+
+```bash
+pip install "aware-sdk[terminal]"
+```
+
 This command installs the following packages (with compatible versions):
 
 - [`aware-release`](https://pypi.org/project/aware-release/) — bundle builder,
@@ -28,6 +35,10 @@ This command installs the following packages (with compatible versions):
   driven test orchestration.
 - [`aware-file-system`](https://pypi.org/project/aware-file-system/) —
   filesystem watcher/indexer used by the CLI and SDK.
+- [`aware-terminal`](https://pypi.org/project/aware-terminal/) — terminal daemon
+  and PTY orchestration used by Studio.
+- [`aware-terminal-providers`](https://pypi.org/project/aware-terminal-providers/)
+  — provider registry and workflows for Terminal automation.
 
 ## CLI helper
 

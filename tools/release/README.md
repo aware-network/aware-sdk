@@ -166,7 +166,7 @@ For more dynamic pipelines, you can gather rule identifiers programmatically:
 
 ```bash
 uv run --project tools/cli python - <<'PY'
-from aware_cli.objects.rule.meta import list_rules
+from aware_cli.registry.rules import list_rules
 for rule in list_rules():
     print(rule.id)
 PY

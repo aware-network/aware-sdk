@@ -1,13 +1,20 @@
-"""Test suite discovery functionality with manifest-driven configuration."""
+"""Test suite discovery functionality driven by manifest configuration."""
 
 from __future__ import annotations
 
 import shlex
 from collections import deque
+from functools import lru_cache
+from fnmatch import fnmatch
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
-from ..config import ManifestData
+try:  # Python 3.11+
+    import tomllib  # type: ignore[attr-defined]
+except ModuleNotFoundError:  # pragma: no cover
+    tomllib = None  # type: ignore[assignment]
+
+from ..config import DiscoveryRule, ManifestData
 from .models import TestSuite
 
 BASE_CATEGORY_PRESETS: Dict[str, List[str]] = {
@@ -31,8 +38,47 @@ BASE_CATEGORY_PRESETS: Dict[str, List[str]] = {
 }
 
 
+@lru_cache(maxsize=128)
+def _load_pyproject_data(directory: str) -> Dict[str, Any]:
+    """Read and cache pyproject metadata for discovery purposes."""
+    dir_path = Path(directory)
+    pyproject = dir_path / "pyproject.toml"
+    if tomllib is None or not pyproject.is_file():
+        return {}
+    with pyproject.open("rb") as handle:
+        return tomllib.load(handle)
+
+
+def _slugify(value: str, *, allow_dash: bool = False) -> str:
+    """Convert a string to a slug suitable for suite identifiers."""
+    if not value:
+        return ""
+    chars: List[str] = []
+    for char in value:
+        if char.isalnum() or (allow_dash and char == "-"):
+            chars.append(char)
+        else:
+            chars.append("_")
+    slug = "".join(chars).strip("_")
+    while "__" in slug:
+        slug = slug.replace("__", "_")
+    return slug or value.strip()
+
+
+def _title_case(value: str) -> str:
+    if not value:
+        return ""
+    cleaned = value.replace("_", " ").replace("-", " ")
+    return " ".join(part for part in cleaned.split() if part).title()
+
+
+class _FormatDict(dict):
+    def __missing__(self, key: str) -> str:
+        return ""
+
+
 class TestSuiteDiscovery:
-    """Auto-discovery of test suites organized by category."""
+    """Auto-discovery of test suites orchestrated by manifest-defined rules."""
 
     def __init__(self, aware_root: str, manifest: ManifestData):
         self.aware_root = Path(aware_root)
@@ -41,7 +87,10 @@ class TestSuiteDiscovery:
         self._stable_entries = manifest.stable_entries
         self._stable_names = self._extract_stable_names(self._stable_entries)
         self._stable_partials = self._extract_stable_partials(self._stable_entries)
+        self._discovery_rules = [rule for rule in manifest.discovery_rules if rule.enabled]
+        self._category_alias_map = self._build_category_alias_map()
         self._category_presets = self._build_category_presets()
+        self._suite_cache: Optional[Dict[str, TestSuite]] = None
 
     def category_presets(self) -> Dict[str, List[str]]:
         """Return cached category selectors derived from manifests + discovery defaults."""
@@ -62,133 +111,15 @@ class TestSuiteDiscovery:
 
     def available_categories(self) -> List[str]:
         """Expose available categories for CLI consumption."""
-        return list(self.category_presets().keys())
+        return sorted(self.category_presets().keys())
 
-    def discover_grammar_suites(self) -> Dict[str, TestSuite]:
-        """Discover grammar test suites from languages directory."""
-        suites: Dict[str, TestSuite] = {}
-        languages_dir = self.aware_root / "languages"
+    def discover_all_suites(self) -> Dict[str, TestSuite]:
+        """Discover all test suites across discovery rules and runtime manifest entries."""
+        return dict(self._all_suites())
 
-        if not languages_dir.exists():
-            return suites
-
-        for lang_dir in languages_dir.iterdir():
-            if not lang_dir.is_dir() or lang_dir.name.startswith("_"):
-                continue
-
-            grammar_tests_dir = lang_dir / "grammar" / "grammar" / "tests"
-            if grammar_tests_dir.exists() and grammar_tests_dir.is_dir():
-                suite_name = f"{lang_dir.name}-grammar"
-                description = f"{lang_dir.name.title()} grammar tests"
-
-                suites[suite_name] = TestSuite(
-                    name=suite_name,
-                    path=str(grammar_tests_dir),
-                    category="grammar",
-                    description=description,
-                )
-
-        return suites
-
-    def discover_lib_suites(self) -> Dict[str, TestSuite]:
-        """Discover library test suites from lib directory."""
-        suites: Dict[str, TestSuite] = {}
-        libs_dir = self.aware_root / "libs"
-        if not libs_dir.exists():
-            return suites
-
-        queue = deque([libs_dir])
-        while queue:
-            current_dir = queue.popleft()
-            for child_dir in current_dir.iterdir():
-                if not child_dir.is_dir():
-                    continue
-                if child_dir.name.startswith((".", "_")) or child_dir.name == "__pycache__":
-                    continue
-                if child_dir.name == "tests":
-                    continue
-
-                tests_dir = child_dir / "tests"
-                if tests_dir.exists() and tests_dir.is_dir():
-                    try:
-                        relative_path = child_dir.relative_to(libs_dir)
-                    except ValueError:
-                        continue
-                    if "tests" in relative_path.parts:
-                        continue
-
-                    if len(relative_path.parts) > 2:
-                        continue
-
-                    if not self._has_project_metadata(child_dir):
-                        continue
-
-                    suite_name = self._build_lib_suite_name(relative_path)
-                    if suite_name in suites:
-                        continue
-
-                    description = self._build_lib_suite_description(relative_path)
-                    suites[suite_name] = TestSuite(
-                        name=suite_name,
-                        path=str(tests_dir),
-                        category="lib",
-                        description=description,
-                    )
-
-                queue.append(child_dir)
-
-        return suites
-
-    def discover_domain_suites(self) -> Dict[str, TestSuite]:
-        """Discover domain test suites from domains directory."""
-        suites: Dict[str, TestSuite] = {}
-        domains_dir = self.aware_root / "languages" / "python" / "domains"
-
-        if not domains_dir.exists():
-            return suites
-
-        for domain_dir in domains_dir.iterdir():
-            if not domain_dir.is_dir():
-                continue
-
-            tests_dir = domain_dir / "tests"
-            if tests_dir.exists() and tests_dir.is_dir():
-                suite_name = domain_dir.name
-                description = f"{domain_dir.name.title()} domain tests"
-
-                suites[suite_name] = TestSuite(
-                    name=suite_name,
-                    path=str(tests_dir),
-                    category="domains",
-                    description=description,
-                )
-
-        return suites
-
-    def discover_tool_suites(self) -> Dict[str, TestSuite]:
-        """Discover tooling test suites from tools directory."""
-        suites: Dict[str, TestSuite] = {}
-        tools_dir = self.aware_root / "tools"
-
-        if not tools_dir.exists():
-            return suites
-
-        for tool_dir in tools_dir.iterdir():
-            if not tool_dir.is_dir():
-                continue
-
-            tests_dir = tool_dir / "tests"
-            if tests_dir.exists() and tests_dir.is_dir():
-                suite_name = tool_dir.name.replace("_", "-")
-                description = f"{tool_dir.name} tooling tests"
-                suites[suite_name] = TestSuite(
-                    name=suite_name,
-                    path=str(tests_dir),
-                    category="tools",
-                    description=description,
-                )
-
-        return suites
+    def discover_all_runtime_entries(self) -> List[Dict]:
+        """Expose runtime entries for downstream tooling."""
+        return list(self._runtime_entries)
 
     def discover_manifest_suites(self) -> Dict[str, TestSuite]:
         """Load suites defined via runtime manifests."""
@@ -199,40 +130,21 @@ class TestSuiteDiscovery:
                 suites[suite.name] = suite
         return suites
 
-    def discover_all_suites(self) -> Dict[str, TestSuite]:
-        """Discover all test suites across all categories."""
-        all_suites: Dict[str, TestSuite] = {}
-
-        all_suites.update(self.discover_grammar_suites())
-        all_suites.update(self.discover_lib_suites())
-        all_suites.update(self.discover_domain_suites())
-        all_suites.update(self.discover_tool_suites())
-        all_suites.update(self.discover_manifest_suites())
-
-        return all_suites
-
     def get_suites_by_category(self, category: str) -> Dict[str, TestSuite]:
         """Get all suites for a specific category."""
-        suites: Dict[str, TestSuite] = {}
-        if category == "grammar":
-            return self.discover_grammar_suites()
-        if category in {"lib", "libs"}:
-            return self.discover_lib_suites()
-        if category == "domains":
-            return self.discover_domain_suites()
-        if category == "tools":
-            return self.discover_tool_suites()
         if category == "stable":
             if not self._stable_names:
                 return {}
-            available = self.discover_all_suites()
+            available = self._all_suites()
+            partials = self._stable_partials
+            suites: Dict[str, TestSuite] = {}
             missing = []
             for name in self._stable_names:
                 suite = available.get(name)
                 if suite is None:
                     missing.append(name)
                     continue
-                selectors = self._stable_partials.get(name)
+                selectors = partials.get(name)
                 if selectors:
                     suites[name] = TestSuite(
                         name=suite.name,
@@ -251,16 +163,234 @@ class TestSuiteDiscovery:
                 print(f"Warning: Stable suite(s) not found: {', '.join(missing)}")
             return suites
 
-        manifest_categories = self._manifest_suites_by_category()
-        if category in manifest_categories:
-            return manifest_categories[category]
+        target = self._category_alias_map.get(category, category)
+        suites = {
+            name: suite
+            for name, suite in self._all_suites().items()
+            if suite.category == target
+        }
         return suites
 
-    def _manifest_suites_by_category(self) -> Dict[str, Dict[str, TestSuite]]:
-        grouped: Dict[str, Dict[str, TestSuite]] = {}
-        for suite in self.discover_manifest_suites().values():
-            grouped.setdefault(suite.category, {})[suite.name] = suite
-        return grouped
+    def _all_suites(self) -> Dict[str, TestSuite]:
+        if self._suite_cache is None:
+            suites: Dict[str, TestSuite] = {}
+            for rule in self._discovery_rules:
+                suites.update(self._discover_with_rule(rule))
+            suites.update(self.discover_manifest_suites())
+            self._suite_cache = suites
+        return self._suite_cache
+
+    def _discover_with_rule(self, rule: DiscoveryRule) -> Dict[str, TestSuite]:
+        if rule.type != "package":
+            print(f"Warning: Unsupported discovery rule type '{rule.type}' for rule '{rule.id}'")
+            return {}
+        return self._discover_package_rule(rule)
+
+    def _discover_package_rule(self, rule: DiscoveryRule) -> Dict[str, TestSuite]:
+        root_dir = (self.aware_root / rule.root).resolve()
+        if not root_dir.exists():
+            return {}
+
+        suites: Dict[str, TestSuite] = {}
+        queue: deque[tuple[Path, Path]] = deque()
+        queue.append((root_dir, Path()))
+        tests_dir_parts = Path(rule.tests_dir).parts or ("tests",)
+        first_tests_segment = tests_dir_parts[0]
+
+        while queue:
+            current_dir, relative = queue.popleft()
+            depth = len(relative.parts)
+            is_root = depth == 0
+
+            if (not is_root) or rule.include_root:
+                if self._matches_patterns(relative, rule.include, rule.exclude):
+                    suite = self._build_suite_from_rule(rule, current_dir, relative)
+                    if suite is not None and suite.name not in suites:
+                        suites[suite.name] = suite
+
+            if rule.max_depth is not None and depth >= rule.max_depth:
+                continue
+
+            try:
+                children = sorted(current_dir.iterdir(), key=lambda p: p.name)
+            except OSError:
+                continue
+
+            for child in children:
+                if not child.is_dir():
+                    continue
+                if self._should_skip_directory(child.name):
+                    continue
+                if child.name == first_tests_segment:
+                    continue
+                queue.append((child, relative / child.name))
+
+        return suites
+
+    def _build_suite_from_rule(self, rule: DiscoveryRule, directory: Path, relative: Path) -> Optional[TestSuite]:
+        tests_dir = directory.joinpath(*Path(rule.tests_dir).parts or ("tests",))
+        if not tests_dir.exists() or not tests_dir.is_dir():
+            return None
+
+        metadata_value = self._extract_metadata(directory, rule.metadata_field)
+        if rule.require_metadata and not metadata_value:
+            return None
+
+        suite_name = self._build_suite_name(rule, relative, metadata_value)
+        if not suite_name:
+            return None
+
+        description = self._build_suite_description(rule, relative, metadata_value, suite_name)
+
+        return TestSuite(
+            name=suite_name,
+            path=str(tests_dir),
+            category=rule.category,
+            description=description,
+        )
+
+    def _matches_patterns(self, relative: Path, include: List[str], exclude: List[str]) -> bool:
+        relative_str = str(relative).replace("\\", "/")
+        name = relative.name if relative_str else ""
+
+        if include:
+            if not any(
+                fnmatch(relative_str, pattern) or (name and fnmatch(name, pattern))
+                for pattern in include
+            ):
+                return False
+
+        if exclude:
+            if any(
+                fnmatch(relative_str, pattern) or (name and fnmatch(name, pattern))
+                for pattern in exclude
+            ):
+                return False
+
+        return True
+
+    @staticmethod
+    def _should_skip_directory(name: str) -> bool:
+        return name in {"__pycache__"} or name.startswith(".") or name.startswith("_")
+
+    def _extract_metadata(self, directory: Path, metadata_field: Optional[str]) -> Optional[str]:
+        if not metadata_field:
+            return None
+        data = _load_pyproject_data(str(directory))
+        value: Any = data
+        for part in metadata_field.split("."):
+            if isinstance(value, dict) and part in value:
+                value = value[part]
+            else:
+                return None
+        if isinstance(value, str):
+            return value
+        return None
+
+    def _build_suite_name(self, rule: DiscoveryRule, relative: Path, metadata_value: Optional[str]) -> Optional[str]:
+        cfg = rule.name
+        context = self._build_context(rule, relative, metadata_value)
+
+        if cfg.strategy == "path_join":
+            parts = list(relative.parts)
+            if cfg.reverse:
+                parts = list(reversed(parts))
+            slug_parts = [_slugify(part) for part in parts if part]
+            if not slug_parts and cfg.fallback:
+                fallback = self._fallback_name(cfg.fallback, context, rule, metadata_value)
+                return fallback
+            if not slug_parts:
+                slug_parts = [_slugify(metadata_value or rule.id)]
+            return cfg.delimiter.join(slug_parts)
+
+        if cfg.strategy == "metadata":
+            if metadata_value:
+                return _slugify(metadata_value)
+            return self._fallback_name(cfg.fallback, context, rule, metadata_value)
+
+        if cfg.strategy == "template":
+            template = cfg.template or "{path_slug}"
+            formatted = self._safe_format(template, context)
+            if formatted:
+                return formatted
+            return self._fallback_name(cfg.fallback, context, rule, metadata_value)
+
+        return None
+
+    def _fallback_name(
+        self,
+        fallback: Optional[str],
+        context: Dict[str, Any],
+        rule: DiscoveryRule,
+        metadata_value: Optional[str],
+    ) -> Optional[str]:
+        if not fallback:
+            return None
+        if fallback == "metadata" and metadata_value:
+            return _slugify(metadata_value)
+        if fallback == "path" and context.get("path_slug"):
+            return context["path_slug"]
+        if fallback == "name" and context.get("name_slug"):
+            return context["name_slug"]
+        if fallback == "rule":
+            return _slugify(rule.id)
+        return None
+
+    def _build_suite_description(
+        self,
+        rule: DiscoveryRule,
+        relative: Path,
+        metadata_value: Optional[str],
+        suite_name: str,
+    ) -> str:
+        context = self._build_context(rule, relative, metadata_value)
+        context["suite_name"] = suite_name
+        if rule.description:
+            return self._safe_format(rule.description, context) or rule.description
+        display = context.get("display_title") or context.get("name_title") or rule.category.title()
+        return f"{display} {rule.category} tests"
+
+    def _build_context(
+        self,
+        rule: DiscoveryRule,
+        relative: Path,
+        metadata_value: Optional[str],
+    ) -> Dict[str, Any]:
+        parts = list(relative.parts)
+        name = parts[-1] if parts else rule.root.strip("/").split("/")[-1]
+
+        path_slug = "_".join(_slugify(part) for part in parts if part)
+        display = metadata_value or name or rule.id
+
+        context: Dict[str, Any] = {
+            "rule_id": rule.id,
+            "category": rule.category,
+            "path": "/".join(parts),
+            "path_parts": parts,
+            "path_slug": path_slug,
+            "path_dash": "-".join(_slugify(part, allow_dash=True) for part in parts if part),
+            "path_title": " ".join(_title_case(part) for part in parts if part),
+            "name": name,
+            "name_slug": _slugify(name),
+            "name_dash": name.replace("_", "-"),
+            "name_title": _title_case(name),
+            "language": parts[0] if parts else "",
+            "language_title": _title_case(parts[0]) if parts else "",
+            "metadata_value": metadata_value or "",
+            "metadata_slug": _slugify(metadata_value or ""),
+            "metadata_title": _title_case(metadata_value or ""),
+            "display": display,
+            "display_slug": _slugify(display),
+            "display_title": _title_case(display),
+        }
+        return context
+
+    @staticmethod
+    def _safe_format(template: str, context: Dict[str, Any]) -> str:
+        try:
+            return template.format_map(_FormatDict(context))
+        except Exception:  # pragma: no cover - defensive
+            return template
 
     def _build_manifest_suite(self, entry: Dict) -> Optional[TestSuite]:
         name = entry.get("name")
@@ -324,6 +454,40 @@ class TestSuiteDiscovery:
             setup_commands=setup_commands,
         )
 
+    def _build_category_alias_map(self) -> Dict[str, str]:
+        mapping: Dict[str, str] = {}
+        for category in list(BASE_CATEGORY_PRESETS.keys()) + ["stable"]:
+            mapping.setdefault(category, category)
+
+        for rule in self._discovery_rules:
+            mapping.setdefault(rule.category, rule.category)
+            for alias in rule.category_aliases:
+                mapping[alias] = rule.category
+
+        for entry in self._runtime_entries:
+            category = entry.get("category") or entry.get("runtime") or "external"
+            if isinstance(category, str):
+                mapping.setdefault(category, category)
+
+        return mapping
+
+    def _build_category_presets(self) -> Dict[str, List[str]]:
+        presets = {name: entries[:] for name, entries in BASE_CATEGORY_PRESETS.items()}
+
+        for category in self._category_alias_map:
+            presets.setdefault(category, [])
+
+        for entry in self._runtime_entries:
+            category = entry.get("category") or entry.get("runtime") or "external"
+            name = entry.get("name")
+            if isinstance(category, str) and isinstance(name, str):
+                presets.setdefault(category, [])
+                if name not in presets[category]:
+                    presets[category].append(name)
+
+        presets["stable"] = self._stable_names
+        return presets
+
     @staticmethod
     def _extract_stable_names(entries: List[object]) -> List[str]:
         names: List[str] = []
@@ -348,51 +512,6 @@ class TestSuiteDiscovery:
                     if selectors:
                         partials[name] = selectors
         return partials
-
-    def _build_category_presets(self) -> Dict[str, List[str]]:
-        presets = {name: entries[:] for name, entries in BASE_CATEGORY_PRESETS.items()}
-        if "lib" in presets and "libs" not in presets:
-            presets["libs"] = presets["lib"][:]
-        for entry in self._runtime_entries:
-            category = entry.get("category") or entry.get("runtime") or "external"
-            name = entry.get("name")
-            if isinstance(name, str):
-                presets.setdefault(category, [])
-                if name not in presets[category]:
-                    presets[category].append(name)
-        presets["stable"] = self._stable_names
-        return presets
-
-    def discover_all_runtime_entries(self) -> List[Dict]:
-        """Expose runtime entries for downstream tooling."""
-        return list(self._runtime_entries)
-
-    @staticmethod
-    def _build_lib_suite_name(relative_path: Path) -> str:
-        """Construct a deterministic suite name from the library path."""
-        parts = [part for part in reversed(relative_path.parts) if part]
-        if not parts:
-            return "lib"
-        return "_".join(parts)
-
-    @staticmethod
-    def _build_lib_suite_description(relative_path: Path) -> str:
-        """Create a human friendly description for library suites."""
-        words = []
-        for part in relative_path.parts:
-            if not part:
-                continue
-            words.append(part.replace("_", " ").title())
-        label = " ".join(words) if words else "Library"
-        return f"{label} library tests"
-
-    @staticmethod
-    def _has_project_metadata(candidate_dir: Path) -> bool:
-        """Check if the directory looks like a standalone project."""
-        for metadata_file in ("pyproject.toml", "setup.cfg", "setup.py"):
-            if candidate_dir.joinpath(metadata_file).exists():
-                return True
-        return False
 
 
 def expand_suite_selectors(selectors: List[str], discovery: TestSuiteDiscovery) -> List[str]:
